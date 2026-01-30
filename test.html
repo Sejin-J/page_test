@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>My Visualization Lab</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body { font-family: sans-serif; text-align: center; }
+        .container { display: flex; justify-content: space-around; flex-wrap: wrap; }
+        .chart { width: 45%; min-width: 400px; height: 400px; margin-bottom: 50px; }
+    </style>
+</head>
+<body>
+    <h1>Data Visualization on GitHub Pages</h1>
+    
+    <div class="container">
+        <div id="plotly-chart" class="chart"></div>
+        
+        <div id="d3-chart" class="chart">
+            <h3 style="margin-top:0;">D3.js Dynamic Circles</h3>
+        </div>
+    </div>
+
+    <script>
+        // 1. Plotly.js 예제: 3D Scatter Plot (고정익 드론 경로 느낌)
+        const t = d3.range(0, 10, 0.1);
+        const x = t.map(v => Math.cos(v));
+        const y = t.map(v => Math.sin(v));
+        const z = t;
+
+        const trace = {
+            x: x, y: y, z: z,
+            mode: 'lines+markers',
+            type: 'scatter3d',
+            marker: { size: 4, color: z, colorscale: 'Viridis' }
+        };
+
+        Plotly.newPlot('plotly-chart', [trace], { title: 'Plotly 3D Path' });
+
+        // 2. D3.js 예제: 간단한 인터랙티브 원형 그래프
+        const svg = d3.select("#d3-chart")
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%");
+
+        const circles = svg.selectAll("circle")
+            .data([40, 80, 120, 160])
+            .enter()
+            .append("circle")
+            .attr("cx", (d, i) => (i + 1) * 80)
+            .attr("cy", 150)
+            .attr("r", d => d / 4)
+            .attr("fill", "#69b3a2")
+            .on("mouseover", function() {
+                d3.select(this).transition().attr("fill", "orange").attr("r", 50);
+            })
+            .on("mouseout", function(d) {
+                d3.select(this).transition().attr("fill", "#69b3a2").attr("r", d => d / 4);
+            });
+    </script>
+</body>
+</html>
