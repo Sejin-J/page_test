@@ -2,187 +2,185 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>3-DOF Flight Dynamics & PID Control</title>
+    <title>High-Fidelity 3-DOF Aero Simulator</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; margin: 20px; background: #f8f9fa; }
-        .grid-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
-        .sidebar { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); height: fit-content; }
-        .main-content { display: flex; flex-direction: column; gap: 20px; }
-        .chart-box { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        .param-group { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        label { font-size: 0.85rem; display: block; margin-top: 5px; color: #555; }
-        input { width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; }
-        select { width: 100%; padding: 8px; margin-bottom: 10px; }
-        button { width: 100%; padding: 12px; background: #2c3e50; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .github-btn { text-align: center; margin-top: 20px; }
-        .github-btn a { color: #333; text-decoration: none; font-size: 0.9rem; font-weight: bold; }
+        body { font-family: 'Inter', sans-serif; margin: 0; display: flex; height: 100vh; background: #1a1a1a; color: #eee; }
+        #sidebar { width: 380px; padding: 20px; overflow-y: auto; background: #252525; border-right: 1px solid #333; }
+        #main { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .card { background: #2d2d2d; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
+        label { font-size: 11px; color: #aaa; text-transform: uppercase; }
+        input { background: #3d3d3d; border: 1px solid #555; color: #fff; padding: 4px; border-radius: 4px; width: 100%; }
+        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0056b3; }
+        .header { border-bottom: 1px solid #444; margin-bottom: 15px; padding-bottom: 5px; color: #00d4ff; }
     </style>
 </head>
 <body>
 
-<div class="grid-layout">
-    <div class="sidebar">
-        <h3>Flight Config</h3>
-        <div class="param-group">
-            <strong>Aerodynamics</strong>
-            <label>CL_alpha (/deg): <input type="number" id="cl_alpha" value="0.1" step="0.01"></label>
-            <label>CD_0: <input type="number" id="cd0" value="0.02" step="0.005"></label>
-            <label>Cm_alpha: <input type="number" id="cm_alpha" value="-0.01" step="0.001"></label>
-            <label>Cm_elevator: <input type="number" id="cm_ele" value="-0.02" step="0.001"></label>
-        </div>
-        
-        <div class="param-group">
-            <strong>Control PID</strong>
-            <label>Pitch Kp: <input type="number" id="kp" value="1.5" step="0.1"></label>
-            <label>Pitch Kd: <input type="number" id="kd" value="0.5" step="0.1"></label>
-        </div>
-
-        <div class="param-group">
-            <strong>Command</strong>
-            <select id="ctrlMode">
-                <option value="pitch">Pitch Angle Control (deg)</option>
-                <option value="alt">Altitude Control (m)</option>
-            </select>
-            <label>Target Value: <input type="number" id="targetVal" value="10" step="1"></label>
-        </div>
-
-        <button onclick="toggleSimulation()" id="simBtn">Run Simulation</button>
-        
-        <div class="github-btn">
-            <a href="https://github.com/Sejin-J/page_test" target="_blank">View on GitHub</a>
-        </div>
+<div id="sidebar">
+    <h2 style="margin-top:0">Aero Config</h2>
+    
+    <div class="header">Physical & Geometry</div>
+    <div class="input-grid">
+        <label>Mass (kg)<input type="number" id="mass" value="2.5"></label>
+        <label>Iyy (kg·m²)<input type="number" id="iyy" value="0.15"></label>
+        <label>S (m²)<input type="number" id="area" value="0.45"></label>
+        <label>c (chord, m)<input type="number" id="chord" value="0.25"></label>
     </div>
 
-    <div class="main-content">
-        <div class="chart-box" id="aeroChart"></div>
-        <div class="chart-box" id="stateChart"></div>
-        <div class="chart-box" id="visualChart"></div>
+    <div class="header">Lift & Drag Coefficients</div>
+    <div class="input-grid">
+        <label>CL_0<input type="number" id="cl0" value="0.25"></label>
+        <label>CL_alpha (/rad)<input type="number" id="cla" value="4.8"></label>
+        <label>CD_0 (Parasitic)<input type="number" id="cd0" value="0.025"></label>
+        <label>K (Induced Drag)<input type="number" id="k_drag" value="0.05"></label>
     </div>
+
+    <div class="header">Pitching Moment Derivatives</div>
+    <div class="input-grid">
+        <label>Cm_0<input type="number" id="cm0" value="0.02"></label>
+        <label>Cm_alpha (Stability)<input type="number" id="cma" value="-0.8"></label>
+        <label>Cm_q (Damping)<input type="number" id="cmq" value="-12.0"></label>
+        <label>Cm_delta_e (Effect)<input type="number" id="cmde" value="-1.1"></label>
+    </div>
+
+    <div class="header">Control & Command</div>
+    <select id="mode" style="width:100%; margin-bottom:10px; background: #3d3d3d; color: #fff;">
+        <option value="pitch">Pitch Angle Control</option>
+        <option value="alt">Altitude Hold</option>
+    </select>
+    <label>Target Value<input type="number" id="target" value="5"></label>
+    
+    <div class="header">PID Gains</div>
+    <div class="input-grid">
+        <label>Kp<input type="number" id="kp" value="1.2"></label>
+        <label>Ki<input type="number" id="ki" value="0.1"></label>
+        <label>Kd<input type="number" id="kd" value="0.3"></label>
+    </div>
+
+    <button onclick="toggleSim()" id="btn">START SIMULATION</button>
+</div>
+
+<div id="main">
+    <div class="card" id="statePlot" style="flex:1"></div>
+    <div class="card" id="aeroPolarPlot" style="flex:1"></div>
+    <div class="card" id="vizPlot" style="height:250px"></div>
 </div>
 
 <script>
-// --- 초기 상태 및 변수 ---
-let isRunning = false;
-let dt = 0.05;
-let t = 0;
+let running = false;
+const dt = 0.01;
+let time = 0;
 
-// 상태 변수: [u, w, q, theta, x, z] -> [전진속도, 하향속도, 각속도, 자세각, 위치X, 고도Z]
-let state = { u: 20, w: 0, q: 0, theta: 0, x: 0, z: 100 };
-let pathData = { t:[], z:[], theta:[], target:[] };
+// States: [V, alpha, q, theta, x, z]
+let s = { V: 15, a: 0, q: 0, th: 0, x: 0, z: 50 };
+let hist = { t:[], z:[], th:[], target:[] };
+let errInt = 0;
 
-// --- 1. Aero Curve Plot (정적 분석) ---
-function plotAeroCurves() {
-    let alphas = Array.from({length: 41}, (_, i) => -10 + i); // -10 ~ 30 deg
-    let cla = parseFloat(document.getElementById('cl_alpha').value);
-    let cd0 = parseFloat(document.getElementById('cd0').value);
-    
-    let cl = alphas.map(a => cla * a);
-    let cd = alphas.map(a => cd0 + 0.05 * Math.pow(cla * a, 2)); // 유도항력 간략화
-
-    let trace1 = { x: alphas, y: cl, name: 'CL vs Alpha', type: 'scatter' };
-    let trace2 = { x: alphas, y: cd, name: 'CD vs Alpha', type: 'scatter', yaxis: 'y2' };
-
-    let layout = {
-        title: 'Aerodynamic Coefficients',
-        height: 300,
-        margin: { t: 40, b: 40, l: 50, r: 50 },
-        yaxis: { title: 'CL' },
-        yaxis2: { title: 'CD', overlaying: 'y', side: 'right' }
+function getAero(alpha, q, de) {
+    const p = {
+        cl0: +cl0.value, cla: +cla.value, cd0: +cd0.value, k: +k_drag.value,
+        cm0: +cm0.value, cma: +cma.value, cmq: +cmq.value, cmde: +cmde.value,
+        S: +area.value, c: +chord.value, mass: +mass.value, iyy: +iyy.value
     };
-    Plotly.newPlot('aeroChart', [trace1, trace2], layout);
+
+    const q_inf = 0.5 * 1.225 * s.V**2;
+    const CL = p.cl0 + p.cla * alpha;
+    const CD = p.cd0 + p.k * CL**2;
+    // Cm 계산 (Non-dimensional damping cmq * q * c / (2V) 포함)
+    const Cm = p.cm0 + p.cma * alpha + p.cmq * (q * p.c / (2 * s.V)) + p.cmde * de;
+
+    return { 
+        L: CL * q_inf * p.S, 
+        D: CD * q_inf * p.S, 
+        M: Cm * q_inf * p.S * p.c,
+        p: p 
+    };
 }
 
-// --- 2. 3-DOF Dynamics Solver ---
-function updateDynamics() {
-    let cla = parseFloat(document.getElementById('cl_alpha').value);
-    let cma = parseFloat(document.getElementById('cm_alpha').value);
-    let cme = parseFloat(document.getElementById('cm_ele').value);
-    let target = parseFloat(document.getElementById('targetVal').value);
-    let mode = document.getElementById('ctrlMode').value;
-
-    // Pitch Control (Inner loop)
-    let kp = parseFloat(document.getElementById('kp').value);
-    let kd = parseFloat(document.getElementById('kd').value);
+function physicsStep() {
+    // 1. Controller (PID)
+    const targetVal = +target.value;
+    const isAltMode = mode.value === 'alt';
     
-    let pitchTarget = mode === 'alt' ? (target - state.z) * 0.2 : target;
-    pitchTarget = Math.max(-20, Math.min(20, pitchTarget)); // Saturation
+    let cmdTheta = isAltMode ? (targetVal - s.z) * 0.1 : targetVal * Math.PI/180;
+    cmdTheta = Math.max(-0.3, Math.min(0.3, cmdTheta));
 
-    let error = pitchTarget - (state.theta * 180/Math.PI);
-    let de = kp * error - kd * (state.q * 180/Math.PI); // Elevator command (deg)
+    const err = cmdTheta - s.th;
+    errInt += err * dt;
+    const de = (+kp.value * err) + (+ki.value * errInt) - (+kd.value * s.q);
 
-    // Aerodynamics Calculation
-    let alpha = Math.atan2(state.w, state.u); // rad
-    let V = Math.sqrt(state.u**2 + state.w**2);
-    let q_bar = 0.5 * 1.225 * V**2 * 1.0; // Dynamic pressure * S (S=1.0)
+    // 2. Aero Forces
+    const aero = getAero(s.a, s.q, de);
+    const g = 9.81;
 
-    let L = q_bar * (cla * (alpha * 180/Math.PI));
-    let M = q_bar * 0.2 * (cma * (alpha * 180/Math.PI) + cme * de); // 0.2 = chord
+    // 3. EOM (Body Frame simplified longitudinal)
+    // T(Thrust)는 속도 유지를 위해 Drag와 평형이라고 가정 (Trimmed)
+    const dV = 0; // Constant speed assumption for clarity, or add Thrust logic
+    const da = s.q - (aero.L - aero.p.mass * g * Math.cos(s.th - s.a)) / (aero.p.mass * s.V);
+    const dq = aero.M / aero.p.iyy;
+    const dth = s.q;
 
-    // Equations of Motion (Simplified 3-DOF)
-    let g = 9.81;
-    let m = 5.0; // Mass
-    let Iyy = 0.5; // Inertia
-
-    let dw = (m*g*Math.cos(state.theta) - L) / m;
-    let dq = M / Iyy;
-
-    // Integration
-    state.w += dw * dt;
-    state.q += dq * dt;
-    state.theta += state.q * dt;
-    state.z += (state.u * Math.sin(state.theta) - state.w * Math.cos(state.theta)) * dt;
-    state.x += (state.u * Math.cos(state.theta) + state.w * Math.sin(state.theta)) * dt;
-    t += dt;
+    // 4. Integration
+    s.a += da * dt;
+    s.q += dq * dt;
+    s.th += dth * dt;
+    s.x += s.V * Math.cos(s.th) * dt;
+    s.z += s.V * Math.sin(s.th) * dt;
+    time += dt;
 }
 
-// --- 3. Animation & Plotting ---
-function loop() {
-    if(!isRunning) return;
-    updateDynamics();
+function updatePlots() {
+    if(!running) return;
+    for(let i=0; i<5; i++) physicsStep(); // Over-sampling for stability
 
-    pathData.t.push(t);
-    pathData.z.push(state.z);
-    pathData.theta.push(state.theta * 180/Math.PI);
+    hist.t.push(time);
+    hist.z.push(s.z);
+    hist.th.push(s.th * 180/Math.PI);
+    if(hist.t.length > 500) { hist.t.shift(); hist.z.shift(); hist.th.shift(); }
 
-    if(pathData.t.length > 100) {
-        pathData.t.shift(); pathData.z.shift(); pathData.theta.shift();
-    }
-
-    // 시각화 업데이트
-    Plotly.restyle('stateChart', { x: [pathData.t], y: [pathData.z] }, [0]);
+    Plotly.restyle('statePlot', { x: [hist.t], y: [hist.z] }, [0]);
     
-    // 비행기 자세 가시화 (측면)
-    let planeX = [ -1, 1 ];
-    let planeZ = [ 
-        Math.sin(-state.theta), 
-        Math.sin(state.theta) 
-    ];
-    Plotly.restyle('visualChart', { x: [planeX], y: [planeZ] }, [0]);
+    // Pitch 시각화
+    const px = [-1, 1], pz = [-Math.sin(s.th), Math.sin(s.th)];
+    Plotly.restyle('vizPlot', { x: [px], y: [pz] }, [0]);
 
-    requestAnimationFrame(loop);
+    requestAnimationFrame(updatePlots);
 }
 
-function toggleSimulation() {
-    isRunning = !isRunning;
-    document.getElementById('simBtn').innerText = isRunning ? "Stop" : "Run Simulation";
-    if(isRunning) loop();
+function toggleSim() {
+    running = !running;
+    btn.innerText = running ? "STOP" : "START SIMULATION";
+    btn.style.background = running ? "#dc3545" : "#007bff";
+    if(running) updatePlots();
 }
 
-// 초기화
+// Initial Plots
 function init() {
-    plotAeroCurves();
-    Plotly.newPlot('stateChart', [{ x: [], y: [], name: 'Altitude' }], { 
-        title: 'Real-time State', height: 250, margin:{t:30, b:30} 
-    });
-    Plotly.newPlot('visualChart', [{ 
-        x: [-1, 1], y: [0, 0], mode: 'lines+markers', line: {width:10} 
-    }], { 
-        title: 'Pitch Attitude Visual', height: 200, 
-        xaxis: {range:[-2, 2], fixedrange:true}, yaxis: {range:[-1, 1], fixedrange:true} 
-    });
-}
+    // State Plot
+    Plotly.newPlot('statePlot', [{ x:[], y:[], name:'Altitude', line:{color:'#00d4ff'} }], 
+        { title:'Live Altitude (m)', paper_bgcolor:'#2d2d2d', plot_bgcolor:'#2d2d2d', 
+          font:{color:'#eee'}, margin:{t:40,b:40}});
 
+    // Aero Polar Plot
+    let alphas = Array.from({length:50}, (_,i) => -0.2 + i*0.01);
+    let polars = alphas.map(a => {
+        let res = getAero(a, 0, 0);
+        return {cl: res.L/(0.5*1.225*s.V**2*area.value), cd: res.D/(0.5*1.225*s.V**2*area.value)};
+    });
+    Plotly.newPlot('aeroPolarPlot', [
+        { x:alphas.map(a=>a*180/Math.PI), y:polars.map(p=>p.cl), name:'CL' },
+        { x:alphas.map(a=>a*180/Math.PI), y:polars.map(p=>p.cd), name:'CD', yaxis:'y2' }
+    ], { title:'Aero Derivatives (CL/CD vs Alpha)', paper_bgcolor:'#2d2d2d', plot_bgcolor:'#2d2d2d', 
+         font:{color:'#eee'}, yaxis:{title:'CL'}, yaxis2:{overlaying:'y', side:'right', title:'CD'}});
+
+    // Visual
+    Plotly.newPlot('vizPlot', [{ x:[-1.2, 1.2], y:[0,0], mode:'lines+markers', line:{width:8, color:'#ffcc00'} }], 
+        { title:'Pitch Attitude', paper_bgcolor:'#2d2d2d', plot_bgcolor:'#2d2d2d', font:{color:'#eee'},
+          xaxis:{range:[-2,2], fixedrange:true}, yaxis:{range:[-1.5,1.5], fixedrange:true}});
+}
 init();
 </script>
 </body>
