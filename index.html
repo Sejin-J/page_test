@@ -70,4 +70,205 @@
 
     <a href="https://github.com/Sejin-J/page_test" target="_blank" class="github-button">
         <svg height="20" viewBox="0 0 16 16" width="20">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+        </svg>
+        View on GitHub
+    </a>
+
+    <script>
+        // --- Simulation Parameters ---
+        const dt = 0.1; // Time step (s)
+        let simulationRunning = false;
+        let animationFrameId;
+
+        // --- Aircraft Dynamics Model (Simplified 2D, Vertical Motion) ---
+        let x = 0;      // Horizontal position (m)
+        let z = 0;      // Altitude (m)
+        let vx = 10;    // Horizontal velocity (m/s)
+        let vz = 0;     // Vertical velocity (m/s)
+
+        // Aerodynamic coefficients (simplified, mostly for vertical force)
+        const mass = 100; // kg
+        const g = 9.81;   // m/s^2
+        const K_drag = 0.1; // Simplified drag coefficient (for vertical motion)
+        const K_lift = 50;  // Simplified lift coefficient (controlled by controller)
+
+        // --- PID Controller Parameters (Altitude Control) ---
+        let targetAltitude = 100; // m
+        let Kp = 0.1;
+        let Ki = 0.01;
+        let Kd = 0.05;
+
+        let integralError = 0;
+        let prevError = 0;
+
+        // --- Plotting Data ---
+        let timeData = [];
+        let xData = [];
+        let zData = [];
+        let targetZData = []; // For target altitude reference
+
+        // --- Plotly Charts Setup ---
+        const flightPathLayout = {
+            title: 'Flight Path (X-Z Plane)',
+            scene: {
+                xaxis: { title: 'X Position (m)' },
+                yaxis: { title: 'Z Altitude (m)', autorange: 'reversed' }, // Z-axis reversed for altitude
+            },
+            showlegend: false,
+            margin: {l: 50, r: 50, b: 50, t: 50}
+        };
+
+        const altitudeControlLayout = {
+            title: 'Altitude Tracking',
+            xaxis: { title: 'Time (s)' },
+            yaxis: { title: 'Altitude (m)' },
+            showlegend: true,
+            margin: {l: 50, r: 50, b: 50, t: 50}
+        };
+
+        function initializePlots() {
+            // Flight Path (2D scatter, but using Plotly's 3D scatter to control axis direction easily)
+            Plotly.newPlot('flight-path-chart', [{
+                x: xData,
+                y: zData,
+                mode: 'lines',
+                name: 'Aircraft Path',
+                line: { color: 'blue', width: 2 }
+            }], {
+                xaxis: { title: 'X Position (m)', range: [0, 500] },
+                yaxis: { title: 'Z Altitude (m)', range: [0, 200] }, // Z-axis for altitude
+                title: 'Flight Path (X-Z Plane)'
+            });
+
+            // Altitude Control
+            Plotly.newPlot('altitude-control-chart', [{
+                x: timeData,
+                y: zData,
+                mode: 'lines',
+                name: 'Current Altitude',
+                line: { color: 'green' }
+            }, {
+                x: timeData,
+                y: targetZData,
+                mode: 'lines',
+                name: 'Target Altitude',
+                line: { color: 'red', dash: 'dash' }
+            }], altitudeControlLayout);
+        }
+
+        // --- PID Controller Function ---
+        function calculatePID(currentZ, targetZ) {
+            const error = targetZ - currentZ;
+            integralError += error * dt;
+            const derivativeError = (error - prevError) / dt;
+            prevError = error;
+
+            const control_signal = (Kp * error) + (Ki * integralError) + (Kd * derivativeError);
+            return control_signal;
+        }
+
+        // --- Simulation Step Function ---
+        function simulateStep() {
+            if (!simulationRunning) return;
+
+            const time = timeData.length > 0 ? timeData[timeData.length - 1] + dt : 0;
+
+            // 1. Calculate Control Signal (Thrust/Lift Command)
+            const pidOutput = calculatePID(z, targetAltitude);
+
+            // The PID output will directly influence the vertical force (effective lift)
+            // A positive pidOutput means "go up", so we add it to the upward forces.
+            const controlledLiftForce = K_lift * pidOutput; // Simplified direct mapping
+
+            // 2. Calculate Forces
+            const F_gravity = -mass * g; // Downward
+            const F_drag_z = -K_drag * vz; // Opposite to vertical velocity
+            const F_total_z = F_gravity + controlledLiftForce + F_drag_z; // Simplified
+
+            // 3. Update Accelerations
+            const az = F_total_z / mass;
+
+            // 4. Update Velocities
+            vz += az * dt;
+            // vx is constant for this simplified 2D model, but could be integrated with drag/thrust
+            // vx = ...
+
+            // 5. Update Positions
+            x += vx * dt;
+            z += vz * dt;
+
+            // Ensure altitude doesn't go below ground
+            if (z < 0) {
+                z = 0;
+                vz = Math.max(0, vz); // Stop descending if hit ground
+            }
+
+            // 6. Store Data
+            timeData.push(time);
+            xData.push(x);
+            zData.push(z);
+            targetZData.push(targetAltitude);
+
+            // 7. Update Plots (Continuously append data)
+            Plotly.extendTraces('flight-path-chart', { x: [[x]], y: [[z]] }, [0]);
+            Plotly.extendTraces('altitude-control-chart', { x: [[time], [time]], y: [[z], [targetAltitude]] }, [0, 1]);
+
+            // Adjust x-axis range for flight path to follow aircraft
+            const currentXRange = Plotly.d3.select('#flight-path-chart').layout.xaxis.range;
+            if (x > currentXRange[1] - 50) { // If aircraft gets too close to right edge
+                const newRange = [currentXRange[0] + (x - (currentXRange[1] - 50)), x + 50];
+                Plotly.relayout('flight-path-chart', { 'xaxis.range': newRange });
+            }
+
+            // Request next frame
+            animationFrameId = requestAnimationFrame(simulateStep);
+        }
+
+        // --- Control Buttons ---
+        document.getElementById('startSimulation').addEventListener('click', () => {
+            if (!simulationRunning) {
+                simulationRunning = true;
+                animationFrameId = requestAnimationFrame(simulateStep);
+            }
+        });
+
+        document.getElementById('resetSimulation').addEventListener('click', () => {
+            cancelAnimationFrame(animationFrameId);
+            simulationRunning = false;
+
+            // Reset all variables
+            x = 0; z = 0; vx = 10; vz = 0;
+            integralError = 0; prevError = 0;
+            timeData = []; xData = []; zData = []; targetZData = [];
+
+            // Re-initialize plots
+            initializePlots();
+            
+            // Update initial data for plots
+            timeData.push(0);
+            xData.push(0);
+            zData.push(0);
+            targetZData.push(targetAltitude);
+            Plotly.addTraces('flight-path-chart', {x: [0], y: [0]});
+            Plotly.addTraces('altitude-control-chart', [{x: [0], y: [0]}, {x: [0], y: [targetAltitude]}]);
+        });
+
+        // --- Parameter Input Handlers ---
+        document.getElementById('targetAltitude').addEventListener('change', (e) => {
+            targetAltitude = parseFloat(e.target.value);
+            // Optionally, redraw target line immediately if simulation isn't running
+            if (!simulationRunning && timeData.length > 0) {
+                 Plotly.restyle('altitude-control-chart', {y: [zData, Array(timeData.length).fill(targetAltitude)]}, [0, 1]);
+            }
+        });
+        document.getElementById('kp').addEventListener('change', (e) => { Kp = parseFloat(e.target.value); });
+        document.getElementById('ki').addEventListener('change', (e) => { Ki = parseFloat(e.target.value); });
+        document.getElementById('kd').addEventListener('change', (e) => { Kd = parseFloat(e.target.value); });
+
+        // Initial setup
+        initializePlots();
+        document.getElementById('resetSimulation').click(); // Perform an initial reset to populate plots
+    </script>
+</body>
+</html>
