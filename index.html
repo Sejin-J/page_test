@@ -2,62 +2,72 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>My Visualization Lab</title>
+    <title>Flight Simulation with PID Control</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        body { font-family: sans-serif; text-align: center; }
-        .container { display: flex; justify-content: space-around; flex-wrap: wrap; }
-        .chart { width: 45%; min-width: 400px; height: 400px; margin-bottom: 50px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f4f7f6; color: #333; }
+        h1, h2 { text-align: center; color: #2c3e50; }
+        .container { max-width: 1200px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
+        .chart-panel { border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background-color: #fafafa; }
+        #flight-path-chart, #altitude-control-chart { width: 100%; height: 400px; }
+        .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-top: 20px; padding: 15px; border-top: 1px solid #e0e0e0; background-color: #fcfcfc; border-radius: 0 0 10px 10px; }
+        .controls label { margin-right: 5px; font-weight: bold; color: #555; }
+        .controls input[type="number"], .controls button { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        .controls button { background-color: #3498db; color: white; cursor: pointer; border: none; transition: background-color 0.3s ease; }
+        .controls button:hover { background-color: #2980b9; }
+        .github-button { 
+            display: flex; align-items: center; justify-content: center;
+            margin-top: 40px; padding: 12px 25px; 
+            background: #24292e; color: white; text-decoration: none; 
+            border-radius: 8px; font-size: 16px; font-weight: bold;
+            transition: background-color 0.3s ease;
+            max-width: 200px; /* 버튼의 최대 너비 설정 */
+            margin-left: auto; /* 가운데 정렬을 위해 */
+            margin-right: auto; /* 가운데 정렬을 위해 */
+        }
+        .github-button:hover { background-color: #000; }
+        .github-button svg { margin-right: 10px; fill: white; }
     </style>
 </head>
 <body>
-    <h1>Data Visualization on GitHub Pages</h1>
-    
     <div class="container">
-        <div id="plotly-chart" class="chart"></div>
-        
-        <div id="d3-chart" class="chart">
-            <h3 style="margin-top:0;">D3.js Dynamic Circles</h3>
+        <h1>2D Flight Simulation with PID Control</h1>
+        <p style="text-align: center; color: #777;">A simple aircraft model tracking a target altitude using a PID controller.</p>
+
+        <div class="chart-grid">
+            <div class="chart-panel">
+                <h2>Flight Path (X-Z Plane)</h2>
+                <div id="flight-path-chart"></div>
+            </div>
+            <div class="chart-panel">
+                <h2>Altitude Tracking</h2>
+                <div id="altitude-control-chart"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div>
+                <label for="targetAltitude">Target Altitude (m):</label>
+                <input type="number" id="targetAltitude" value="100" step="10">
+            </div>
+            <div>
+                <label for="kp">Kp:</label>
+                <input type="number" id="kp" value="0.1" step="0.01">
+            </div>
+            <div>
+                <label for="ki">Ki:</label>
+                <input type="number" id="ki" value="0.01" step="0.001">
+            </div>
+            <div>
+                <label for="kd">Kd:</label>
+                <input type="number" id="kd" value="0.05" step="0.005">
+            </div>
+            <button id="startSimulation">Start Simulation</button>
+            <button id="resetSimulation">Reset</button>
         </div>
     </div>
 
-    <script>
-        // 1. Plotly.js 예제: 3D Scatter Plot (고정익 드론 경로 느낌)
-        const t = d3.range(0, 10, 0.1);
-        const x = t.map(v => Math.cos(v));
-        const y = t.map(v => Math.sin(v));
-        const z = t;
-
-        const trace = {
-            x: x, y: y, z: z,
-            mode: 'lines+markers',
-            type: 'scatter3d',
-            marker: { size: 4, color: z, colorscale: 'Viridis' }
-        };
-
-        Plotly.newPlot('plotly-chart', [trace], { title: 'Plotly 3D Path' });
-
-        // 2. D3.js 예제: 간단한 인터랙티브 원형 그래프
-        const svg = d3.select("#d3-chart")
-            .append("svg")
-            .attr("width", "100%")
-            .attr("height", "100%");
-
-        const circles = svg.selectAll("circle")
-            .data([40, 80, 120, 160])
-            .enter()
-            .append("circle")
-            .attr("cx", (d, i) => (i + 1) * 80)
-            .attr("cy", 150)
-            .attr("r", d => d / 4)
-            .attr("fill", "#69b3a2")
-            .on("mouseover", function() {
-                d3.select(this).transition().attr("fill", "orange").attr("r", 50);
-            })
-            .on("mouseout", function(d) {
-                d3.select(this).transition().attr("fill", "#69b3a2").attr("r", d => d / 4);
-            });
-    </script>
-</body>
-</html>
+    <a href="https://github.com/Sejin-J/page_test" target="_blank" class="github-button">
+        <svg height="20" viewBox="0 0 16 16" width="20">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.
