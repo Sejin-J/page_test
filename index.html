@@ -2,273 +2,188 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>Flight Simulation with PID Control</title>
+    <title>3-DOF Flight Dynamics & PID Control</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f4f7f6; color: #333; }
-        h1, h2 { text-align: center; color: #2c3e50; }
-        .container { max-width: 1200px; margin: 20px auto; background-color: #ffffff; padding: 30px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 30px; }
-        .chart-panel { border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; background-color: #fafafa; }
-        #flight-path-chart, #altitude-control-chart { width: 100%; height: 400px; }
-        .controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-top: 20px; padding: 15px; border-top: 1px solid #e0e0e0; background-color: #fcfcfc; border-radius: 0 0 10px 10px; }
-        .controls label { margin-right: 5px; font-weight: bold; color: #555; }
-        .controls input[type="number"], .controls button { padding: 8px 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
-        .controls button { background-color: #3498db; color: white; cursor: pointer; border: none; transition: background-color 0.3s ease; }
-        .controls button:hover { background-color: #2980b9; }
-        .github-button { 
-            display: flex; align-items: center; justify-content: center;
-            margin-top: 40px; padding: 12px 25px; 
-            background: #24292e; color: white; text-decoration: none; 
-            border-radius: 8px; font-size: 16px; font-weight: bold;
-            transition: background-color 0.3s ease;
-            max-width: 200px; /* 버튼의 최대 너비 설정 */
-            margin-left: auto; /* 가운데 정렬을 위해 */
-            margin-right: auto; /* 가운데 정렬을 위해 */
-        }
-        .github-button:hover { background-color: #000; }
-        .github-button svg { margin-right: 10px; fill: white; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 20px; background: #f8f9fa; }
+        .grid-layout { display: grid; grid-template-columns: 350px 1fr; gap: 20px; }
+        .sidebar { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); height: fit-content; }
+        .main-content { display: flex; flex-direction: column; gap: 20px; }
+        .chart-box { background: #fff; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .param-group { margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        label { font-size: 0.85rem; display: block; margin-top: 5px; color: #555; }
+        input { width: 80px; padding: 4px; border: 1px solid #ddd; border-radius: 4px; }
+        select { width: 100%; padding: 8px; margin-bottom: 10px; }
+        button { width: 100%; padding: 12px; background: #2c3e50; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .github-btn { text-align: center; margin-top: 20px; }
+        .github-btn a { color: #333; text-decoration: none; font-size: 0.9rem; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>2D Flight Simulation with PID Control</h1>
-        <p style="text-align: center; color: #777;">A simple aircraft model tracking a target altitude using a PID controller.</p>
 
-        <div class="chart-grid">
-            <div class="chart-panel">
-                <h2>Flight Path (X-Z Plane)</h2>
-                <div id="flight-path-chart"></div>
-            </div>
-            <div class="chart-panel">
-                <h2>Altitude Tracking</h2>
-                <div id="altitude-control-chart"></div>
-            </div>
+<div class="grid-layout">
+    <div class="sidebar">
+        <h3>Flight Config</h3>
+        <div class="param-group">
+            <strong>Aerodynamics</strong>
+            <label>CL_alpha (/deg): <input type="number" id="cl_alpha" value="0.1" step="0.01"></label>
+            <label>CD_0: <input type="number" id="cd0" value="0.02" step="0.005"></label>
+            <label>Cm_alpha: <input type="number" id="cm_alpha" value="-0.01" step="0.001"></label>
+            <label>Cm_elevator: <input type="number" id="cm_ele" value="-0.02" step="0.001"></label>
+        </div>
+        
+        <div class="param-group">
+            <strong>Control PID</strong>
+            <label>Pitch Kp: <input type="number" id="kp" value="1.5" step="0.1"></label>
+            <label>Pitch Kd: <input type="number" id="kd" value="0.5" step="0.1"></label>
         </div>
 
-        <div class="controls">
-            <div>
-                <label for="targetAltitude">Target Altitude (m):</label>
-                <input type="number" id="targetAltitude" value="100" step="10">
-            </div>
-            <div>
-                <label for="kp">Kp:</label>
-                <input type="number" id="kp" value="0.1" step="0.01">
-            </div>
-            <div>
-                <label for="ki">Ki:</label>
-                <input type="number" id="ki" value="0.01" step="0.001">
-            </div>
-            <div>
-                <label for="kd">Kd:</label>
-                <input type="number" id="kd" value="0.05" step="0.005">
-            </div>
-            <button id="startSimulation">Start Simulation</button>
-            <button id="resetSimulation">Reset</button>
+        <div class="param-group">
+            <strong>Command</strong>
+            <select id="ctrlMode">
+                <option value="pitch">Pitch Angle Control (deg)</option>
+                <option value="alt">Altitude Control (m)</option>
+            </select>
+            <label>Target Value: <input type="number" id="targetVal" value="10" step="1"></label>
+        </div>
+
+        <button onclick="toggleSimulation()" id="simBtn">Run Simulation</button>
+        
+        <div class="github-btn">
+            <a href="https://github.com/Sejin-J/page_test" target="_blank">View on GitHub</a>
         </div>
     </div>
 
-    <a href="https://github.com/Sejin-J/page_test" target="_blank" class="github-button">
-        <svg height="20" viewBox="0 0 16 16" width="20">
-            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
-        </svg>
-        View on GitHub
-    </a>
+    <div class="main-content">
+        <div class="chart-box" id="aeroChart"></div>
+        <div class="chart-box" id="stateChart"></div>
+        <div class="chart-box" id="visualChart"></div>
+    </div>
+</div>
 
-    <script>
-        // --- Simulation Parameters ---
-        const dt = 0.1; // Time step (s)
-        let simulationRunning = false;
-        let animationFrameId;
+<script>
+// --- 초기 상태 및 변수 ---
+let isRunning = false;
+let dt = 0.05;
+let t = 0;
 
-        // --- Aircraft Dynamics Model (Simplified 2D, Vertical Motion) ---
-        let x = 0;      // Horizontal position (m)
-        let z = 0;      // Altitude (m)
-        let vx = 10;    // Horizontal velocity (m/s)
-        let vz = 0;     // Vertical velocity (m/s)
+// 상태 변수: [u, w, q, theta, x, z] -> [전진속도, 하향속도, 각속도, 자세각, 위치X, 고도Z]
+let state = { u: 20, w: 0, q: 0, theta: 0, x: 0, z: 100 };
+let pathData = { t:[], z:[], theta:[], target:[] };
 
-        // Aerodynamic coefficients (simplified, mostly for vertical force)
-        const mass = 100; // kg
-        const g = 9.81;   // m/s^2
-        const K_drag = 0.1; // Simplified drag coefficient (for vertical motion)
-        const K_lift = 50;  // Simplified lift coefficient (controlled by controller)
+// --- 1. Aero Curve Plot (정적 분석) ---
+function plotAeroCurves() {
+    let alphas = Array.from({length: 41}, (_, i) => -10 + i); // -10 ~ 30 deg
+    let cla = parseFloat(document.getElementById('cl_alpha').value);
+    let cd0 = parseFloat(document.getElementById('cd0').value);
+    
+    let cl = alphas.map(a => cla * a);
+    let cd = alphas.map(a => cd0 + 0.05 * Math.pow(cla * a, 2)); // 유도항력 간략화
 
-        // --- PID Controller Parameters (Altitude Control) ---
-        let targetAltitude = 100; // m
-        let Kp = 0.1;
-        let Ki = 0.01;
-        let Kd = 0.05;
+    let trace1 = { x: alphas, y: cl, name: 'CL vs Alpha', type: 'scatter' };
+    let trace2 = { x: alphas, y: cd, name: 'CD vs Alpha', type: 'scatter', yaxis: 'y2' };
 
-        let integralError = 0;
-        let prevError = 0;
+    let layout = {
+        title: 'Aerodynamic Coefficients',
+        height: 300,
+        margin: { t: 40, b: 40, l: 50, r: 50 },
+        yaxis: { title: 'CL' },
+        yaxis2: { title: 'CD', overlaying: 'y', side: 'right' }
+    };
+    Plotly.newPlot('aeroChart', [trace1, trace2], layout);
+}
 
-        // --- Plotting Data ---
-        let timeData = [];
-        let xData = [];
-        let zData = [];
-        let targetZData = []; // For target altitude reference
+// --- 2. 3-DOF Dynamics Solver ---
+function updateDynamics() {
+    let cla = parseFloat(document.getElementById('cl_alpha').value);
+    let cma = parseFloat(document.getElementById('cm_alpha').value);
+    let cme = parseFloat(document.getElementById('cm_ele').value);
+    let target = parseFloat(document.getElementById('targetVal').value);
+    let mode = document.getElementById('ctrlMode').value;
 
-        // --- Plotly Charts Setup ---
-        const flightPathLayout = {
-            title: 'Flight Path (X-Z Plane)',
-            scene: {
-                xaxis: { title: 'X Position (m)' },
-                yaxis: { title: 'Z Altitude (m)', autorange: 'reversed' }, // Z-axis reversed for altitude
-            },
-            showlegend: false,
-            margin: {l: 50, r: 50, b: 50, t: 50}
-        };
+    // Pitch Control (Inner loop)
+    let kp = parseFloat(document.getElementById('kp').value);
+    let kd = parseFloat(document.getElementById('kd').value);
+    
+    let pitchTarget = mode === 'alt' ? (target - state.z) * 0.2 : target;
+    pitchTarget = Math.max(-20, Math.min(20, pitchTarget)); // Saturation
 
-        const altitudeControlLayout = {
-            title: 'Altitude Tracking',
-            xaxis: { title: 'Time (s)' },
-            yaxis: { title: 'Altitude (m)' },
-            showlegend: true,
-            margin: {l: 50, r: 50, b: 50, t: 50}
-        };
+    let error = pitchTarget - (state.theta * 180/Math.PI);
+    let de = kp * error - kd * (state.q * 180/Math.PI); // Elevator command (deg)
 
-        function initializePlots() {
-            // Flight Path (2D scatter, but using Plotly's 3D scatter to control axis direction easily)
-            Plotly.newPlot('flight-path-chart', [{
-                x: xData,
-                y: zData,
-                mode: 'lines',
-                name: 'Aircraft Path',
-                line: { color: 'blue', width: 2 }
-            }], {
-                xaxis: { title: 'X Position (m)', range: [0, 500] },
-                yaxis: { title: 'Z Altitude (m)', range: [0, 200] }, // Z-axis for altitude
-                title: 'Flight Path (X-Z Plane)'
-            });
+    // Aerodynamics Calculation
+    let alpha = Math.atan2(state.w, state.u); // rad
+    let V = Math.sqrt(state.u**2 + state.w**2);
+    let q_bar = 0.5 * 1.225 * V**2 * 1.0; // Dynamic pressure * S (S=1.0)
 
-            // Altitude Control
-            Plotly.newPlot('altitude-control-chart', [{
-                x: timeData,
-                y: zData,
-                mode: 'lines',
-                name: 'Current Altitude',
-                line: { color: 'green' }
-            }, {
-                x: timeData,
-                y: targetZData,
-                mode: 'lines',
-                name: 'Target Altitude',
-                line: { color: 'red', dash: 'dash' }
-            }], altitudeControlLayout);
-        }
+    let L = q_bar * (cla * (alpha * 180/Math.PI));
+    let M = q_bar * 0.2 * (cma * (alpha * 180/Math.PI) + cme * de); // 0.2 = chord
 
-        // --- PID Controller Function ---
-        function calculatePID(currentZ, targetZ) {
-            const error = targetZ - currentZ;
-            integralError += error * dt;
-            const derivativeError = (error - prevError) / dt;
-            prevError = error;
+    // Equations of Motion (Simplified 3-DOF)
+    let g = 9.81;
+    let m = 5.0; // Mass
+    let Iyy = 0.5; // Inertia
 
-            const control_signal = (Kp * error) + (Ki * integralError) + (Kd * derivativeError);
-            return control_signal;
-        }
+    let dw = (m*g*Math.cos(state.theta) - L) / m;
+    let dq = M / Iyy;
 
-        // --- Simulation Step Function ---
-        function simulateStep() {
-            if (!simulationRunning) return;
+    // Integration
+    state.w += dw * dt;
+    state.q += dq * dt;
+    state.theta += state.q * dt;
+    state.z += (state.u * Math.sin(state.theta) - state.w * Math.cos(state.theta)) * dt;
+    state.x += (state.u * Math.cos(state.theta) + state.w * Math.sin(state.theta)) * dt;
+    t += dt;
+}
 
-            const time = timeData.length > 0 ? timeData[timeData.length - 1] + dt : 0;
+// --- 3. Animation & Plotting ---
+function loop() {
+    if(!isRunning) return;
+    updateDynamics();
 
-            // 1. Calculate Control Signal (Thrust/Lift Command)
-            const pidOutput = calculatePID(z, targetAltitude);
+    pathData.t.push(t);
+    pathData.z.push(state.z);
+    pathData.theta.push(state.theta * 180/Math.PI);
 
-            // The PID output will directly influence the vertical force (effective lift)
-            // A positive pidOutput means "go up", so we add it to the upward forces.
-            const controlledLiftForce = K_lift * pidOutput; // Simplified direct mapping
+    if(pathData.t.length > 100) {
+        pathData.t.shift(); pathData.z.shift(); pathData.theta.shift();
+    }
 
-            // 2. Calculate Forces
-            const F_gravity = -mass * g; // Downward
-            const F_drag_z = -K_drag * vz; // Opposite to vertical velocity
-            const F_total_z = F_gravity + controlledLiftForce + F_drag_z; // Simplified
+    // 시각화 업데이트
+    Plotly.restyle('stateChart', { x: [pathData.t], y: [pathData.z] }, [0]);
+    
+    // 비행기 자세 가시화 (측면)
+    let planeX = [ -1, 1 ];
+    let planeZ = [ 
+        Math.sin(-state.theta), 
+        Math.sin(state.theta) 
+    ];
+    Plotly.restyle('visualChart', { x: [planeX], y: [planeZ] }, [0]);
 
-            // 3. Update Accelerations
-            const az = F_total_z / mass;
+    requestAnimationFrame(loop);
+}
 
-            // 4. Update Velocities
-            vz += az * dt;
-            // vx is constant for this simplified 2D model, but could be integrated with drag/thrust
-            // vx = ...
+function toggleSimulation() {
+    isRunning = !isRunning;
+    document.getElementById('simBtn').innerText = isRunning ? "Stop" : "Run Simulation";
+    if(isRunning) loop();
+}
 
-            // 5. Update Positions
-            x += vx * dt;
-            z += vz * dt;
+// 초기화
+function init() {
+    plotAeroCurves();
+    Plotly.newPlot('stateChart', [{ x: [], y: [], name: 'Altitude' }], { 
+        title: 'Real-time State', height: 250, margin:{t:30, b:30} 
+    });
+    Plotly.newPlot('visualChart', [{ 
+        x: [-1, 1], y: [0, 0], mode: 'lines+markers', line: {width:10} 
+    }], { 
+        title: 'Pitch Attitude Visual', height: 200, 
+        xaxis: {range:[-2, 2], fixedrange:true}, yaxis: {range:[-1, 1], fixedrange:true} 
+    });
+}
 
-            // Ensure altitude doesn't go below ground
-            if (z < 0) {
-                z = 0;
-                vz = Math.max(0, vz); // Stop descending if hit ground
-            }
-
-            // 6. Store Data
-            timeData.push(time);
-            xData.push(x);
-            zData.push(z);
-            targetZData.push(targetAltitude);
-
-            // 7. Update Plots (Continuously append data)
-            Plotly.extendTraces('flight-path-chart', { x: [[x]], y: [[z]] }, [0]);
-            Plotly.extendTraces('altitude-control-chart', { x: [[time], [time]], y: [[z], [targetAltitude]] }, [0, 1]);
-
-            // Adjust x-axis range for flight path to follow aircraft
-            const currentXRange = Plotly.d3.select('#flight-path-chart').layout.xaxis.range;
-            if (x > currentXRange[1] - 50) { // If aircraft gets too close to right edge
-                const newRange = [currentXRange[0] + (x - (currentXRange[1] - 50)), x + 50];
-                Plotly.relayout('flight-path-chart', { 'xaxis.range': newRange });
-            }
-
-            // Request next frame
-            animationFrameId = requestAnimationFrame(simulateStep);
-        }
-
-        // --- Control Buttons ---
-        document.getElementById('startSimulation').addEventListener('click', () => {
-            if (!simulationRunning) {
-                simulationRunning = true;
-                animationFrameId = requestAnimationFrame(simulateStep);
-            }
-        });
-
-        document.getElementById('resetSimulation').addEventListener('click', () => {
-            cancelAnimationFrame(animationFrameId);
-            simulationRunning = false;
-
-            // Reset all variables
-            x = 0; z = 0; vx = 10; vz = 0;
-            integralError = 0; prevError = 0;
-            timeData = []; xData = []; zData = []; targetZData = [];
-
-            // Re-initialize plots
-            initializePlots();
-            
-            // Update initial data for plots
-            timeData.push(0);
-            xData.push(0);
-            zData.push(0);
-            targetZData.push(targetAltitude);
-            Plotly.addTraces('flight-path-chart', {x: [0], y: [0]});
-            Plotly.addTraces('altitude-control-chart', [{x: [0], y: [0]}, {x: [0], y: [targetAltitude]}]);
-        });
-
-        // --- Parameter Input Handlers ---
-        document.getElementById('targetAltitude').addEventListener('change', (e) => {
-            targetAltitude = parseFloat(e.target.value);
-            // Optionally, redraw target line immediately if simulation isn't running
-            if (!simulationRunning && timeData.length > 0) {
-                 Plotly.restyle('altitude-control-chart', {y: [zData, Array(timeData.length).fill(targetAltitude)]}, [0, 1]);
-            }
-        });
-        document.getElementById('kp').addEventListener('change', (e) => { Kp = parseFloat(e.target.value); });
-        document.getElementById('ki').addEventListener('change', (e) => { Ki = parseFloat(e.target.value); });
-        document.getElementById('kd').addEventListener('change', (e) => { Kd = parseFloat(e.target.value); });
-
-        // Initial setup
-        initializePlots();
-        document.getElementById('resetSimulation').click(); // Perform an initial reset to populate plots
-    </script>
+init();
+</script>
 </body>
 </html>
