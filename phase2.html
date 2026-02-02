@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 2: Aero Coeffs</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>고정익 기체 초기 사이징 툴</h1>
+    <div class="nav-bar">
+        <a href="index.html" class="nav-btn">Home</a>
+        <a href="phase1.html" class="nav-btn">1. Initial Sizing</a>
+        <a href="phase2.html" class="nav-btn active">2. Aero Coeffs</a>
+        <a href="phase3.html" class="nav-btn">3. Attitude Control</a>
+        <a href="phase4.html" class="nav-btn">4. Position Control</a>
+        <a href="phase5.html" class="nav-btn">5. Multi-Agent</a>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <h2>2. Aerodynamic Coefficients</h2>
+            <div class="input-group">
+                <h3>기본 공력 계수</h3>
+                <p class="note">Phase 1의 형상 정보를 기반으로 합니다.</p>
+                <label>Oswald Efficiency (e) <input type="number" id="aero_e" value="0.85" step="0.01"></label>
+                <label>Zero-Lift Drag (CD0) <input type="number" id="aero_cd0" value="0.02" step="0.001"></label>
+                <label>Lift Slope (CLa) [/rad] <input type="number" id="aero_cla" value="6.28" step="0.1"></label>
+            </div>
+            <div class="input-group">
+                <h3>모멘트 계수</h3>
+                <label>Pitch Moment (Cm0) <input type="number" id="aero_cm0" value="-0.05" step="0.01"></label>
+                <label>Cm_alpha <input type="number" id="aero_cma" value="-0.5" step="0.1"></label>
+            </div>
+        </div>
+        <div class="panel">
+            <h2>Aerodynamic Analysis</h2>
+            <div class="result-item"><span>Aspect Ratio (AR):</span> <span id="resAR" class="result-value">-</span></div>
+            <div class="result-item"><span>K Factor:</span> <span id="resK" class="result-value">-</span></div>
+            <div class="result-item"><span>(L/D)max:</span> <span id="resLDmax" class="result-value">-</span></div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
