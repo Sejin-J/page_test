@@ -2,186 +2,628 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <title>High-Fidelity 3-DOF Aero Simulator</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed-Wing Aircraft Initial Sizing Tool</title>
     <style>
-        body { font-family: 'Inter', sans-serif; margin: 0; display: flex; height: 100vh; background: #1a1a1a; color: #eee; }
-        #sidebar { width: 380px; padding: 20px; overflow-y: auto; background: #252525; border-right: 1px solid #333; }
-        #main { flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
-        .card { background: #2d2d2d; padding: 15px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px; }
-        label { font-size: 11px; color: #aaa; text-transform: uppercase; }
-        input { background: #3d3d3d; border: 1px solid #555; color: #fff; padding: 4px; border-radius: 4px; width: 100%; }
-        button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #0056b3; }
-        .header { border-bottom: 1px solid #444; margin-bottom: 15px; padding-bottom: 5px; color: #00d4ff; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 300px;
+        }
+        .panel h2 {
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-top: 0;
+            color: #34495e;
+            font-size: 1.2em;
+        }
+        .input-group {
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #eee;
+            padding-bottom: 10px;
+        }
+        .input-group h3 {
+            margin: 5px 0 10px 0;
+            font-size: 1em;
+            color: #7f8c8d;
+        }
+        label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+        input[type="number"] {
+            width: 80px;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: right;
+        }
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+        .result-value {
+            font-weight: bold;
+            color: #2980b9;
+        }
+        canvas {
+            width: 100%;
+            height: 600px;
+            border: 1px solid #ddd;
+            background-color: #fff;
+            margin-top: 10px;
+        }
+        .note {
+            font-size: 0.8em;
+            color: #666;
+            margin-top: 5px;
+        }
+        .saved-models {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .model-chip {
+            background: #e0e0e0;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.9em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .model-chip:hover {
+            background: #d0d0d0;
+        }
+        .model-chip span {
+            pointer-events: none;
+        }
+        .delete-btn {
+            color: #e74c3c;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 4px;
+            pointer-events: auto;
+        }
+        .delete-btn:hover {
+            color: #c0392b;
+        }
+        .action-bar {
+            margin-bottom: 15px;
+            text-align: right;
+        }
+        button.save-btn {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button.save-btn:hover {
+            background-color: #219150;
+        }
     </style>
 </head>
 <body>
 
-<div id="sidebar">
-    <h2 style="margin-top:0">Aero Config</h2>
-    
-    <div class="header">Physical & Geometry</div>
-    <div class="input-grid">
-        <label>Mass (kg)<input type="number" id="mass" value="2.5"></label>
-        <label>Iyy (kg·m²)<input type="number" id="iyy" value="0.15"></label>
-        <label>S (m²)<input type="number" id="area" value="0.45"></label>
-        <label>c (chord, m)<input type="number" id="chord" value="0.25"></label>
+    <h1>고정익 기체 초기 사이징 툴</h1>
+
+    <div class="container">
+        <!-- 입력 패널 -->
+        <div class="panel">
+            <h2>1. Input Parameters</h2>
+            
+            <div class="action-bar">
+                <button class="save-btn" onclick="saveModel()">현재 설정 저장</button>
+            </div>
+            <div id="savedModelsContainer" class="saved-models">
+                <!-- Saved models will appear here -->
+            </div>
+
+            <div class="input-group">
+                <h3>환경 및 기체 설정</h3>
+                <label>중력가속도 (m/s²) <input type="number" id="gravity" value="9.81" step="0.01"></label>
+                <label>공기밀도 (kg/m³) <input type="number" id="density" value="1.2" step="0.01"></label>
+                <label>기체 질량 (g) <input type="number" id="mass" value="10000" step="10"></label>
+                <label>CLmax <input type="number" id="clmax" value="1.0" step="0.1"></label>
+            </div>
+
+            <div class="input-group">
+                <h3>주익 (Main Wing) 형상</h3>
+                <label>Root Chord (A) [mm] <input type="number" id="wingRoot" value="400" step="1"></label>
+                <label>Tip Chord (B) [mm] <input type="number" id="wingTip" value="200" step="1"></label>
+                <label>Sweep Distance (S) [mm] <input type="number" id="wingSweep" value="100" step="1"></label>
+                <label>Half Span (Y) [mm] <input type="number" id="wingSpan" value="1000" step="1"></label>
+            </div>
+
+            <div class="input-group">
+                <h3>수평미익 (Stabilizer) 형상</h3>
+                <label>Root Chord (AA) [mm] <input type="number" id="stabRoot" value="250" step="1"></label>
+                <label>Tip Chord (BB) [mm] <input type="number" id="stabTip" value="150" step="1"></label>
+                <label>Sweep Distance (SS) [mm] <input type="number" id="stabSweep" value="50" step="1"></label>
+                <label>Half Span (YY) [mm] <input type="number" id="stabSpan" value="400" step="1"></label>
+                <label>LE 간 거리 (D) [mm] <input type="number" id="distLE" value="1200" step="1"></label>
+            </div>
+
+            <div class="input-group">
+                <h3>수직미익 (Vertical Tail) 형상</h3>
+                <label>Root Chord (VA) [mm] <input type="number" id="vStabRoot" value="200" step="1"></label>
+                <label>Tip Chord (VB) [mm] <input type="number" id="vStabTip" value="100" step="1"></label>
+                <label>Sweep Distance (VS) [mm] <input type="number" id="vStabSweep" value="80" step="1"></label>
+                <label>Height/Span (VH) [mm] <input type="number" id="vStabHeight" value="300" step="1"></label>
+                <label>LE 간 거리 (VD) [mm] <input type="number" id="vDistLE" value="1150" step="1"></label>
+            </div>
+        </div>
+
+        <!-- 결과 및 형상 패널 -->
+        <div class="panel" style="flex: 1.5;">
+            <h2>2. Performance Results</h2>
+            
+            <div class="input-group">
+                <h3>기하학적 특성</h3>
+                <div class="result-item"><span>익면적 (Wing Area):</span> <span id="resArea" class="result-value">- mm²</span></div>
+                <div class="result-item"><span>익면하중 (Wing Loading):</span> <span id="resLoading" class="result-value">- g/dm²</span></div>
+                <div class="result-item"><span>MAC 길이:</span> <span id="resMAC" class="result-value">- mm</span></div>
+                <div class="result-item"><span>MAC 위치 (Root로부터 거리):</span> <span id="resMACPos" class="result-value">- mm</span></div>
+                <div class="result-item"><span>Tail Volume Ratio (H):</span> <span id="resVH" class="result-value">-</span></div>
+                <div class="result-item"><span>Tail Volume Ratio (V):</span> <span id="resVV" class="result-value">-</span></div>
+            </div>
+
+            <div class="input-group">
+                <h3>속도 성능</h3>
+                <div class="result-item"><span>Vstall (실속속도):</span> <span id="resVstall" class="result-value">-</span></div>
+                <div class="result-item"><span>Vcruise (순항속도, 1.2Vs):</span> <span id="resVcruise" class="result-value">-</span></div>
+            </div>
+
+            <div class="input-group">
+                <h3>선회 반경 (at Vcruise)</h3>
+                <div class="result-item"><span>Bank 30°:</span> <span id="resR30" class="result-value">-</span></div>
+                <div class="result-item"><span>Bank 45°:</span> <span id="resR45" class="result-value">-</span></div>
+                <div class="result-item"><span>Bank 60°:</span> <span id="resR60" class="result-value">-</span></div>
+            </div>
+
+            <h2>3. Geometry (Top & Side View)</h2>
+            <canvas id="geoCanvas"></canvas>
+            <div class="note">* Nose is to the right. Top: Top View, Bottom: Side View.</div>
+        </div>
     </div>
 
-    <div class="header">Lift & Drag Coefficients</div>
-    <div class="input-grid">
-        <label>CL_0<input type="number" id="cl0" value="0.25"></label>
-        <label>CL_alpha (/rad)<input type="number" id="cla" value="4.8"></label>
-        <label>CD_0 (Parasitic)<input type="number" id="cd0" value="0.025"></label>
-        <label>K (Induced Drag)<input type="number" id="k_drag" value="0.05"></label>
-    </div>
+    <script>
+        // 모든 입력 요소 가져오기
+        const inputs = document.querySelectorAll('input');
+        const canvas = document.getElementById('geoCanvas');
+        const ctx = canvas.getContext('2d');
+        const STORAGE_KEY = 'aircraft_sizing_saves';
 
-    <div class="header">Pitching Moment Derivatives</div>
-    <div class="input-grid">
-        <label>Cm_0<input type="number" id="cm0" value="0.02"></label>
-        <label>Cm_alpha (Stability)<input type="number" id="cma" value="-0.8"></label>
-        <label>Cm_q (Damping)<input type="number" id="cmq" value="-12.0"></label>
-        <label>Cm_delta_e (Effect)<input type="number" id="cmde" value="-1.1"></label>
-    </div>
+        // 이벤트 리스너 등록 (값이 바뀌면 자동 계산)
+        inputs.forEach(input => {
+            input.addEventListener('input', calculateAll);
+        });
 
-    <div class="header">Control & Command</div>
-    <select id="mode" style="width:100%; margin-bottom:10px; background: #3d3d3d; color: #fff;">
-        <option value="pitch">Pitch Angle Control</option>
-        <option value="alt">Altitude Hold</option>
-    </select>
-    <label>Target Value<input type="number" id="target" value="5"></label>
-    
-    <div class="header">PID Gains</div>
-    <div class="input-grid">
-        <label>Kp<input type="number" id="kp" value="1.2"></label>
-        <label>Ki<input type="number" id="ki" value="0.1"></label>
-        <label>Kd<input type="number" id="kd" value="0.3"></label>
-    </div>
+        // 초기 실행
+        window.onload = function() {
+            renderSavedModels();
+            calculateAll();
+        };
 
-    <button onclick="toggleSim()" id="btn">START SIMULATION</button>
-</div>
+        function getValue(id) {
+            return parseFloat(document.getElementById(id).value) || 0;
+        }
 
-<div id="main">
-    <div class="card" id="statePlot" style="flex:1"></div>
-    <div class="card" id="aeroPolarPlot" style="flex:1"></div>
-    <div class="card" id="vizPlot" style="height:250px"></div>
-</div>
+        // 저장 기능
+        function saveModel() {
+            const name = prompt("저장할 모델의 이름을 입력하세요:");
+            if (!name) return;
 
-<script>
-let running = false;
-const dt = 0.01;
-let time = 0;
+            const modelData = {};
+            inputs.forEach(input => {
+                modelData[input.id] = input.value;
+            });
 
-// States: [V, alpha, q, theta, x, z]
-let s = { V: 15, a: 0, q: 0, th: 0, x: 0, z: 50 };
-let hist = { t:[], z:[], th:[], target:[] };
-let errInt = 0;
+            const savedModels = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            savedModels.push({ name: name, data: modelData });
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedModels));
+            
+            renderSavedModels();
+        }
 
-function getAero(alpha, q, de) {
-    const p = {
-        cl0: +cl0.value, cla: +cla.value, cd0: +cd0.value, k: +k_drag.value,
-        cm0: +cm0.value, cma: +cma.value, cmq: +cmq.value, cmde: +cmde.value,
-        S: +area.value, c: +chord.value, mass: +mass.value, iyy: +iyy.value
-    };
+        function deleteModel(index) {
+            if(!confirm("정말 삭제하시겠습니까?")) return;
+            const savedModels = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            savedModels.splice(index, 1);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(savedModels));
+            renderSavedModels();
+        }
 
-    const q_inf = 0.5 * 1.225 * s.V**2;
-    const CL = p.cl0 + p.cla * alpha;
-    const CD = p.cd0 + p.k * CL**2;
-    // Cm 계산 (Non-dimensional damping cmq * q * c / (2V) 포함)
-    const Cm = p.cm0 + p.cma * alpha + p.cmq * (q * p.c / (2 * s.V)) + p.cmde * de;
+        function loadModel(index) {
+            const savedModels = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            const model = savedModels[index];
+            if (model) {
+                for (const [key, value] of Object.entries(model.data)) {
+                    const el = document.getElementById(key);
+                    if (el) el.value = value;
+                }
+                calculateAll();
+            }
+        }
 
-    return { 
-        L: CL * q_inf * p.S, 
-        D: CD * q_inf * p.S, 
-        M: Cm * q_inf * p.S * p.c,
-        p: p 
-    };
-}
+        function renderSavedModels() {
+            const container = document.getElementById('savedModelsContainer');
+            const savedModels = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+            
+            container.innerHTML = '';
+            savedModels.forEach((model, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'model-chip';
+                chip.innerHTML = `
+                    <span onclick="loadModel(${index})">${model.name}</span>
+                    <span class="delete-btn" onclick="deleteModel(${index})">×</span>
+                `;
+                container.appendChild(chip);
+            });
+        }
 
-function physicsStep() {
-    // 1. Controller (PID)
-    const targetVal = +target.value;
-    const isAltMode = mode.value === 'alt';
-    
-    let cmdTheta = isAltMode ? (targetVal - s.z) * 0.1 : targetVal * Math.PI/180;
-    cmdTheta = Math.max(-0.3, Math.min(0.3, cmdTheta));
+        function calculateAll() {
+            // 1. 입력값 읽기
+            const g = getValue('gravity');
+            const rho = getValue('density');
+            const mass_g = getValue('mass'); // g
+            const clmax = getValue('clmax');
 
-    const err = cmdTheta - s.th;
-    errInt += err * dt;
-    const de = (+kp.value * err) + (+ki.value * errInt) - (+kd.value * s.q);
+            // mm 단위 입력
+            const A = getValue('wingRoot');
+            const B = getValue('wingTip');
+            const S = getValue('wingSweep');
+            const Y = getValue('wingSpan');
 
-    // 2. Aero Forces
-    const aero = getAero(s.a, s.q, de);
-    const g = 9.81;
+            const AA = getValue('stabRoot');
+            const BB = getValue('stabTip');
+            const SS = getValue('stabSweep');
+            const YY = getValue('stabSpan');
+            const D = getValue('distLE');
 
-    // 3. EOM (Body Frame simplified longitudinal)
-    // T(Thrust)는 속도 유지를 위해 Drag와 평형이라고 가정 (Trimmed)
-    const dV = 0; // Constant speed assumption for clarity, or add Thrust logic
-    const da = s.q - (aero.L - aero.p.mass * g * Math.cos(s.th - s.a)) / (aero.p.mass * s.V);
-    const dq = aero.M / aero.p.iyy;
-    const dth = s.q;
+            const VA = getValue('vStabRoot');
+            const VB = getValue('vStabTip');
+            const VS = getValue('vStabSweep');
+            const VH = getValue('vStabHeight');
+            const VD = getValue('vDistLE');
 
-    // 4. Integration
-    s.a += da * dt;
-    s.q += dq * dt;
-    s.th += dth * dt;
-    s.x += s.V * Math.cos(s.th) * dt;
-    s.z += s.V * Math.sin(s.th) * dt;
-    time += dt;
-}
+            // SI 단위 변환 (계산용)
+            const mass_kg = mass_g / 1000;
+            const A_m = A / 1000;
+            const B_m = B / 1000;
+            const Y_m = Y / 1000;
+            const wingArea_m2 = (A_m + B_m) * Y_m; // Half span * (Root+Tip) is full area? No.
+            // Trapezoid Area = (a+b)/2 * h.
+            // Wing Area (Full) = 2 * ((A+B)/2 * Y) = (A+B)*Y. Correct.
 
-function updatePlots() {
-    if(!running) return;
-    for(let i=0; i<5; i++) physicsStep(); // Over-sampling for stability
+            // 2. 기하학적 계산 (주익)
+            const wingArea_mm2 = (A + B) * Y;
+            const wingArea_dm2 = wingArea_mm2 / 10000;
+            
+            // 익면하중 = Mass(g) / Area(dm2)
+            const wingLoading = wingArea_dm2 > 0 ? mass_g / wingArea_dm2 : 0;
 
-    hist.t.push(time);
-    hist.z.push(s.z);
-    hist.th.push(s.th * 180/Math.PI);
-    if(hist.t.length > 500) { hist.t.shift(); hist.z.shift(); hist.th.shift(); }
+            // MAC (Mean Aerodynamic Chord)
+            // Formula: (2/3) * (A + B - (A*B)/(A+B))
+            let mac = 0;
+            if (A + B > 0) {
+                mac = (2/3) * (A + B - (A * B) / (A + B));
+            }
 
-    Plotly.restyle('statePlot', { x: [hist.t], y: [hist.z] }, [0]);
-    
-    // Pitch 시각화
-    const px = [-1, 1], pz = [-Math.sin(s.th), Math.sin(s.th)];
-    Plotly.restyle('vizPlot', { x: [px], y: [pz] }, [0]);
+            // MAC 위치 (Spanwise location from root, y_mac)
+            // y_mac = (Y/3) * ((A + 2B) / (A + B))
+            let macY = 0;
+            if (A + B > 0) {
+                macY = (Y / 3) * ((A + 2 * B) / (A + B));
+            }
 
-    requestAnimationFrame(updatePlots);
-}
+            // Tail Volume Coefficients
+            // Need MAC of Wing (mac), Wing Area (wingArea_mm2), Wing Span (b = 2*Y)
+            // Need H-Tail Area, V-Tail Area
+            // Need Moment Arms (AC to AC)
+            
+            // Wing AC X position (relative to Wing Root LE)
+            // X_AC_w = X_LE_mac + 0.25 * mac
+            // X_LE_mac = (S / Y) * macY
+            const x_ac_w = (Y > 0) ? (S / Y) * macY + 0.25 * mac : 0;
 
-function toggleSim() {
-    running = !running;
-    btn.innerText = running ? "STOP" : "START SIMULATION";
-    btn.style.background = running ? "#dc3545" : "#007bff";
-    if(running) updatePlots();
-}
+            // H-Tail Area & AC
+            const hTailArea_mm2 = (AA + BB) * YY;
+            let h_mac = 0, h_macY = 0;
+            if (AA + BB > 0) {
+                h_mac = (2/3) * (AA + BB - (AA * BB) / (AA + BB));
+                h_macY = (YY / 3) * ((AA + 2 * BB) / (AA + BB));
+            }
+            // H-Tail AC X position (relative to Wing Root LE)
+            // H-Tail Root LE is at D.
+            const x_ac_h = D + ((YY > 0) ? (SS / YY) * h_macY : 0) + 0.25 * h_mac;
+            const l_h = x_ac_h - x_ac_w;
 
-// Initial Plots
-function init() {
-    // State Plot
-    Plotly.newPlot('statePlot', [{ x:[], y:[], name:'Altitude', line:{color:'#00d4ff'} }], 
-        { title:'Live Altitude (m)', paper_bgcolor:'#2d2d2d', plot_bgcolor:'#2d2d2d', 
-          font:{color:'#eee'}, margin:{t:40,b:40}});
+            // V-Tail Area & AC
+            // V-Tail is single surface usually. Area = (VA+VB)/2 * VH * 1 (if single).
+            // Assuming standard single vertical tail.
+            const vTailArea_mm2 = (VA + VB) / 2 * VH; 
+            let v_mac = 0, v_macZ = 0; // v_macZ is height wise
+            if (VA + VB > 0) {
+                v_mac = (2/3) * (VA + VB - (VA * VB) / (VA + VB));
+                v_macZ = (VH / 3) * ((VA + 2 * VB) / (VA + VB));
+            }
+            // V-Tail AC X position
+            const x_ac_v = VD + ((VH > 0) ? (VS / VH) * v_macZ : 0) + 0.25 * v_mac;
+            const l_v = x_ac_v - x_ac_w;
 
-    // Aero Polar Plot
-    let alphas = Array.from({length:50}, (_,i) => -0.2 + i*0.01);
-    let polars = alphas.map(a => {
-        let res = getAero(a, 0, 0);
-        return {cl: res.L/(0.5*1.225*s.V**2*area.value), cd: res.D/(0.5*1.225*s.V**2*area.value)};
-    });
-    Plotly.newPlot('aeroPolarPlot', [
-        { x:alphas.map(a=>a*180/Math.PI), y:polars.map(p=>p.cl), name:'CL' },
-        { x:alphas.map(a=>a*180/Math.PI), y:polars.map(p=>p.cd), name:'CD', yaxis:'y2' }
-    ], { title:'Aero Derivatives (CL/CD vs Alpha)', paper_bgcolor:'#2d2d2d', plot_bgcolor:'#2d2d2d', 
-         font:{color:'#eee'}, yaxis:{title:'CL'}, yaxis2:{overlaying:'y', side:'right', title:'CD'}});
+            // Coefficients
+            // V_H = (S_H * l_H) / (S_W * mac)
+            let VH_ratio = 0;
+            if (wingArea_mm2 > 0 && mac > 0) {
+                VH_ratio = (hTailArea_mm2 * l_h) / (wingArea_mm2 * mac);
+            }
 
-    // Visual
-    Plotly.newPlot('vizPlot', [{ x:[-1.2, 1.2], y:[0,0], mode:'lines+markers', line:{width:8, color:'#ffcc00'} }], 
-        { title:'Pitch Attitude', paper_bgcolor:'#2d2d2d', plot_bgcolor:'#2d2d2d', font:{color:'#eee'},
-          xaxis:{range:[-2,2], fixedrange:true}, yaxis:{range:[-1.5,1.5], fixedrange:true}});
-}
-init();
-</script>
+            // V_V = (S_V * l_V) / (S_W * b)  where b = 2*Y
+            let VV_ratio = 0;
+            if (wingArea_mm2 > 0 && Y > 0) {
+                VV_ratio = (vTailArea_mm2 * l_v) / (wingArea_mm2 * (2 * Y));
+            }
+
+            // 3. 속도 계산
+            // Vstall = sqrt( (2 * m * g) / (rho * S * Clmax) )
+            let vStall = 0;
+            if (rho > 0 && wingArea_m2 > 0 && clmax > 0) {
+                vStall = Math.sqrt((2 * mass_kg * g) / (rho * wingArea_m2 * clmax));
+            }
+            const vCruise = vStall * 1.2;
+
+            // 4. 선회 반경 계산 (R = V^2 / (g * tan(bank)))
+            // V는 Vcruise 기준
+            function calcTurnInfo(bankDeg) {
+                if (g <= 0 || vCruise <= 0) return 0;
+                const bankRad = bankDeg * (Math.PI / 180);
+                const R = (vCruise * vCruise) / (g * Math.tan(bankRad));
+                
+                // Stall speed at bank angle: Vstall_bank = Vstall * sqrt(1/cos(phi))
+                const loadFactor = 1 / Math.cos(bankRad);
+                const vStallBank = vStall * Math.sqrt(loadFactor);
+                
+                return { R, vStallBank };
+            }
+
+            const info30 = calcTurnInfo(30);
+            const info45 = calcTurnInfo(45);
+            const info60 = calcTurnInfo(60);
+
+            // 5. 결과 업데이트
+            document.getElementById('resArea').innerText = wingArea_mm2.toLocaleString() + " mm²";
+            document.getElementById('resLoading').innerText = wingLoading.toFixed(2) + " g/dm²";
+            document.getElementById('resMAC').innerText = mac.toFixed(1) + " mm";
+            document.getElementById('resMACPos').innerText = macY.toFixed(1) + " mm";
+            document.getElementById('resVH').innerText = VH_ratio.toFixed(3);
+            document.getElementById('resVV').innerText = VV_ratio.toFixed(3);
+
+            document.getElementById('resVstall').innerText = vStall.toFixed(2) + " m/s (" + (vStall*3.6).toFixed(1) + " km/h)";
+            document.getElementById('resVcruise').innerText = vCruise.toFixed(2) + " m/s (" + (vCruise*3.6).toFixed(1) + " km/h)";
+
+            function formatTurn(info) {
+                if(!info) return "-";
+                return `R: ${info.R.toFixed(1)} m, Vs@Bank: ${info.vStallBank.toFixed(1)} m/s`;
+            }
+
+            document.getElementById('resR30').innerText = formatTurn(info30);
+            document.getElementById('resR45').innerText = formatTurn(info45);
+            document.getElementById('resR60').innerText = formatTurn(info60);
+
+            // 6. 형상 그리기
+            drawAircraft(A, B, S, Y, AA, BB, SS, YY, D, VA, VB, VS, VH, VD);
+        }
+
+        function drawAircraft(A, B, S, Y, AA, BB, SS, YY, D, VA, VB, VS, VH, VD) {
+            // 캔버스 크기 조정 (DPI 대응)
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            
+            const width = rect.width;
+            const height = rect.height;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Viewport Split: Top half for Top View, Bottom half for Side View
+            const viewHeight = height / 2;
+            
+            // 좌표계 설정
+            // 전체 길이(X): Max(A, S+B, D+AA, D+SS+BB, VD+VA, VD+VS+VB)
+            const maxX = Math.max(A, S+B, D+AA, D+SS+BB, VD+VA, VD+VS+VB);
+            // Top View 폭(Y): Max(Y, YY) * 2
+            const maxY_Top = Math.max(Y, YY) * 2;
+            // Side View 높이(Z): Max(VH) (plus some wing thickness assumption?)
+            const maxZ_Side = Math.max(VH, 100); // Minimum height for visibility
+            
+            // Scale calculation to fit both views
+            const padding = 0.1;
+            
+            // Top View Scale
+            const scaleX_Top = width / (maxX * (1 + padding * 2));
+            const scaleY_Top = viewHeight / (maxY_Top * (1 + padding));
+            const scaleTop = Math.min(scaleX_Top, scaleY_Top);
+
+            // Side View Scale
+            const scaleX_Side = width / (maxX * (1 + padding * 2));
+            const scaleZ_Side = viewHeight / (maxZ_Side * 2 * (1 + padding)); // *2 to give space
+            const scaleSide = Math.min(scaleX_Side, scaleZ_Side);
+
+            // Use common scale for X if desired, but usually fitting each view is better. 
+            // However, to align X axis visually, let's use the smaller of the two X scales for both, 
+            // or just fit each view independently. Independent fitting might misalign them.
+            // Let's use a common scale for consistency.
+            const scale = Math.min(scaleTop, scaleSide);
+
+            const offsetX = width * 0.1; // 왼쪽 여백
+            
+            // --- Draw Top View ---
+            const offsetY_Top = viewHeight / 2;
+
+            ctx.save();
+            ctx.translate(offsetX, offsetY_Top);
+            
+            // 그리기 스타일
+            ctx.strokeStyle = "#2c3e50";
+            ctx.lineWidth = 2;
+            ctx.fillStyle = "rgba(52, 152, 219, 0.3)";
+
+            // Label
+            ctx.fillStyle = "#333";
+            ctx.fillText("Top View", 0, -viewHeight/2 + 20);
+            ctx.fillStyle = "rgba(52, 152, 219, 0.3)";
+
+            // --- 주익 그리기 ---
+            ctx.beginPath();
+            // 오른쪽 날개
+            ctx.moveTo(0 * scale, 0); // Root LE
+            ctx.lineTo(S * scale, -Y * scale); // Tip LE
+            ctx.lineTo((S + B) * scale, -Y * scale); // Tip TE
+            ctx.lineTo(A * scale, 0); // Root TE
+            // 왼쪽 날개 (대칭)
+            ctx.lineTo((S + B) * scale, Y * scale); // Tip TE
+            ctx.lineTo(S * scale, Y * scale); // Tip LE
+            ctx.lineTo(0 * scale, 0); // Root LE
+            
+            ctx.fill();
+            ctx.stroke();
+
+            // --- 미익 그리기 ---
+            ctx.fillStyle = "rgba(231, 76, 60, 0.3)";
+            ctx.beginPath();
+            // 오른쪽 미익
+            ctx.moveTo(D * scale, 0); // Root LE
+            ctx.lineTo((D + SS) * scale, -YY * scale); // Tip LE
+            ctx.lineTo((D + SS + BB) * scale, -YY * scale); // Tip TE
+            ctx.lineTo((D + AA) * scale, 0); // Root TE
+            // 왼쪽 미익
+            ctx.lineTo((D + SS + BB) * scale, YY * scale); // Tip TE
+            ctx.lineTo((D + SS) * scale, YY * scale); // Tip LE
+            ctx.lineTo(D * scale, 0); // Root LE
+
+            ctx.fill();
+            ctx.stroke();
+
+            // --- V-Tail (Top View - just a line or thin rect) ---
+            // Assuming V-Tail is on centerline
+            ctx.fillStyle = "rgba(46, 204, 113, 0.5)";
+            ctx.beginPath();
+            ctx.moveTo(VD * scale, -2);
+            ctx.lineTo((VD + VS) * scale, -2); // Tip LE projection? No, just root to tip projection
+            // Actually top view of V-tail is a line if vertical.
+            // Let's draw it as a thick line.
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = "rgba(46, 204, 113, 0.8)";
+            ctx.beginPath();
+            ctx.moveTo(VD * scale, 0);
+            ctx.lineTo((VD + VA) * scale, 0); // Root chord
+            ctx.stroke();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = "#2c3e50";
+
+            // --- 기준선 및 중심선 ---
+            ctx.strokeStyle = "#95a5a6";
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 1;
+            
+            // Center Line
+            ctx.beginPath();
+            ctx.moveTo(-10, 0);
+            ctx.lineTo(maxX * scale + 10, 0);
+            ctx.stroke();
+
+            ctx.restore();
+
+            // --- Draw Side View ---
+            const offsetY_Side = viewHeight + viewHeight / 2; // Bottom half center
+            
+            ctx.save();
+            ctx.translate(offsetX, offsetY_Side);
+            
+            // Label
+            ctx.fillStyle = "#333";
+            ctx.fillText("Side View", 0, -viewHeight/2 + 20);
+
+            // Axis line (Fuselage reference)
+            ctx.strokeStyle = "#95a5a6";
+            ctx.setLineDash([5, 5]);
+            ctx.beginPath();
+            ctx.moveTo(-10, 0);
+            ctx.lineTo(maxX * scale + 10, 0);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Wing (Side Profile - simplified as airfoil or rect)
+            ctx.fillStyle = "rgba(52, 152, 219, 0.3)";
+            ctx.strokeStyle = "#2c3e50";
+            ctx.beginPath();
+            // Draw Root Chord profile
+            ctx.rect(0, -5, A * scale, 10); // Simplified thickness
+            ctx.fill();
+            ctx.stroke();
+
+            // H-Tail (Side Profile)
+            ctx.fillStyle = "rgba(231, 76, 60, 0.3)";
+            ctx.beginPath();
+            ctx.rect(D * scale, -3, AA * scale, 6);
+            ctx.fill();
+            ctx.stroke();
+
+            // V-Tail (Side Profile)
+            // Trapezoid standing up
+            ctx.fillStyle = "rgba(46, 204, 113, 0.3)";
+            ctx.beginPath();
+            ctx.moveTo(VD * scale, 0); // Root LE
+            ctx.lineTo((VD + VS) * scale, -VH * scale); // Tip LE (Up is negative Y in canvas)
+            ctx.lineTo((VD + VS + VB) * scale, -VH * scale); // Tip TE
+            ctx.lineTo((VD + VA) * scale, 0); // Root TE
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+
+            // Fuselage (Schematic line)
+            ctx.strokeStyle = "#34495e";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(-A*0.2 * scale, 0); // Nose
+            ctx.lineTo(Math.max(D+AA, VD+VA) * scale, 0); // Tail
+            ctx.stroke();
+
+            ctx.restore();
+        }
+    </script>
 </body>
 </html>
