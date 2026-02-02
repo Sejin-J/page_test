@@ -128,12 +128,57 @@
         button.save-btn:hover {
             background-color: #219150;
         }
+        /* Navigation Tabs */
+        .nav-bar {
+            display: flex;
+            background: #fff;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .nav-btn {
+            padding: 10px 20px;
+            border: none;
+            background: #ecf0f1;
+            color: #2c3e50;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .nav-btn:hover {
+            background: #dfe6e9;
+        }
+        .nav-btn.active {
+            background: #3498db;
+            color: white;
+        }
+        .phase-wrapper {
+            display: none;
+        }
+        .phase-wrapper.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
 
     <h1>고정익 기체 초기 사이징 툴</h1>
 
+    <!-- Navigation -->
+    <div class="nav-bar">
+        <button class="nav-btn active" onclick="setPhase(1)">1. Initial Sizing</button>
+        <button class="nav-btn" onclick="setPhase(2)">2. Aero Coeffs</button>
+        <button class="nav-btn" onclick="setPhase(3)">3. Attitude Control</button>
+        <button class="nav-btn" onclick="setPhase(4)">4. Position Control</button>
+        <button class="nav-btn" onclick="setPhase(5)">5. Multi-Agent</button>
+    </div>
+
+    <!-- Phase 1: Initial Sizing -->
+    <div id="phase1" class="phase-wrapper active">
     <div class="container">
         <!-- 입력 패널 -->
         <div class="panel">
@@ -223,6 +268,98 @@
             <div class="note">* Nose is to the right. Top: Top View, Bottom: Side View.</div>
         </div>
     </div>
+    </div>
+
+    <!-- Phase 2: Aerodynamic Coefficients -->
+    <div id="phase2" class="phase-wrapper">
+        <div class="container">
+            <div class="panel">
+                <h2>2. Aerodynamic Coefficients</h2>
+                <div class="input-group">
+                    <h3>기본 공력 계수</h3>
+                    <p class="note">Phase 1의 형상 정보를 기반으로 합니다.</p>
+                    <label>Oswald Efficiency (e) <input type="number" id="aero_e" value="0.85" step="0.01"></label>
+                    <label>Zero-Lift Drag (CD0) <input type="number" id="aero_cd0" value="0.02" step="0.001"></label>
+                    <label>Lift Slope (CLa) [/rad] <input type="number" id="aero_cla" value="6.28" step="0.1"></label>
+                </div>
+                <div class="input-group">
+                    <h3>모멘트 계수</h3>
+                    <label>Pitch Moment (Cm0) <input type="number" id="aero_cm0" value="-0.05" step="0.01"></label>
+                    <label>Cm_alpha <input type="number" id="aero_cma" value="-0.5" step="0.1"></label>
+                </div>
+            </div>
+            <div class="panel">
+                <h2>Aerodynamic Analysis</h2>
+                <div class="result-item"><span>Aspect Ratio (AR):</span> <span id="resAR" class="result-value">-</span></div>
+                <div class="result-item"><span>K Factor:</span> <span id="resK" class="result-value">-</span></div>
+                <div class="result-item"><span>(L/D)max:</span> <span id="resLDmax" class="result-value">-</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 3: Attitude Control -->
+    <div id="phase3" class="phase-wrapper">
+        <div class="container">
+            <div class="panel">
+                <h2>3. Attitude Control (Inner Loop)</h2>
+                <div class="input-group">
+                    <h3>Roll Controller (PID)</h3>
+                    <label>P Gain <input type="number" id="att_roll_p" value="1.0" step="0.1"></label>
+                    <label>I Gain <input type="number" id="att_roll_i" value="0.1" step="0.01"></label>
+                    <label>D Gain <input type="number" id="att_roll_d" value="0.2" step="0.01"></label>
+                </div>
+                <div class="input-group">
+                    <h3>Pitch Controller (PID)</h3>
+                    <label>P Gain <input type="number" id="att_pitch_p" value="1.5" step="0.1"></label>
+                    <label>I Gain <input type="number" id="att_pitch_i" value="0.2" step="0.01"></label>
+                    <label>D Gain <input type="number" id="att_pitch_d" value="0.3" step="0.01"></label>
+                </div>
+            </div>
+            <div class="panel">
+                <h2>Response Simulation</h2>
+                <div class="note">Step Response Simulation Placeholder</div>
+                <canvas id="attCanvas" style="height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 4: Position Control -->
+    <div id="phase4" class="phase-wrapper">
+        <div class="container">
+            <div class="panel">
+                <h2>4. Position Control (Outer Loop)</h2>
+                <div class="input-group">
+                    <h3>Navigation Parameters</h3>
+                    <label>Cruise Speed (m/s) <input type="number" id="pos_speed" value="15" step="1"></label>
+                    <label>Turn Radius (m) <input type="number" id="pos_radius" value="30" step="5"></label>
+                    <label>Waypoint Acceptance (m) <input type="number" id="pos_wp_dist" value="10" step="1"></label>
+                </div>
+            </div>
+            <div class="panel">
+                <h2>Path Planning</h2>
+                <div class="note">Map / Waypoint View Placeholder</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Phase 5: Multi Agent -->
+    <div id="phase5" class="phase-wrapper">
+        <div class="container">
+            <div class="panel">
+                <h2>5. Multi-Agent Coordination</h2>
+                <div class="input-group">
+                    <h3>Swarm Settings</h3>
+                    <label>Number of Agents <input type="number" id="ma_count" value="3" step="1"></label>
+                    <label>Separation Dist (m) <input type="number" id="ma_sep" value="50" step="5"></label>
+                    <label>Formation Type <input type="text" id="ma_form" value="V-Shape" style="width:80px; text-align:right;"></label>
+                </div>
+            </div>
+            <div class="panel">
+                <h2>Swarm Status</h2>
+                <div class="note">Communication Topology Placeholder</div>
+            </div>
+        </div>
+    </div>
 
     <script>
         // 모든 입력 요소 가져오기
@@ -233,7 +370,7 @@
 
         // 이벤트 리스너 등록 (값이 바뀌면 자동 계산)
         inputs.forEach(input => {
-            input.addEventListener('input', calculateAll);
+            input.addEventListener('input', handleInput);
         });
 
         // 초기 실행
@@ -241,6 +378,26 @@
             renderSavedModels();
             calculateAll();
         };
+
+        function handleInput() {
+            // 현재 활성화된 탭에 따라 필요한 계산 수행
+            calculateAll(); // Phase 1 & Global
+            calculateAero(); // Phase 2
+        }
+
+        function setPhase(phaseNum) {
+            // Hide all phases
+            document.querySelectorAll('.phase-wrapper').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+            
+            // Show selected phase
+            document.getElementById('phase' + phaseNum).classList.add('active');
+            // Update button style (assuming buttons are in order)
+            document.querySelectorAll('.nav-btn')[phaseNum - 1].classList.add('active');
+
+            // Refresh calculations if needed
+            if(phaseNum === 2) calculateAero();
+        }
 
         function getValue(id) {
             return parseFloat(document.getElementById(id).value) || 0;
@@ -379,6 +536,7 @@
             const mass_kg = mass_g / 1000;
 
             // 2. 기하학적 계산 (주익)
+            // 이 데이터는 전역적으로 접근 가능하도록 저장하거나 DOM에 유지됩니다.
             const wingRes = combineSections(A, B, C, S1, S2, Y1, Y2);
             const wingArea_mm2 = wingRes.area * 2; // Both sides
             const wingArea_dm2 = wingArea_mm2 / 10000;
@@ -472,6 +630,33 @@
             const vstab = { A: VA, B: VB, C: VC, S1: VS1, S2: VS2, Y1: VH1, Y2: VH2, D: VD };
             
             drawAircraft(wing, stab, vstab, wingRes);
+
+            // Phase 2를 위한 데이터 속성 저장 (DOM 요소에 임시 저장)
+            document.body.setAttribute('data-ar', (wingSpanTotal*wingSpanTotal / wingArea_mm2).toString());
+        }
+
+        function calculateAero() {
+            // Phase 1에서 계산된 AR 가져오기
+            const ar = parseFloat(document.body.getAttribute('data-ar')) || 0;
+            const e = getValue('aero_e');
+            const cd0 = getValue('aero_cd0');
+            const clmax = getValue('clmax'); // Phase 1 value
+
+            // K factor calculation
+            let K = 0;
+            if (ar > 0 && e > 0) {
+                K = 1 / (Math.PI * e * ar);
+            }
+
+            // L/D max = 1 / (2 * sqrt(K * Cd0))
+            let ldMax = 0;
+            if (K > 0 && cd0 > 0) {
+                ldMax = 1 / (2 * Math.sqrt(K * cd0));
+            }
+
+            document.getElementById('resAR').innerText = ar.toFixed(2);
+            document.getElementById('resK').innerText = K.toFixed(4);
+            document.getElementById('resLDmax').innerText = ldMax.toFixed(2);
         }
 
         function drawAircraft(w, s, v, wingRes) {
