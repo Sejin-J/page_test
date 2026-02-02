@@ -331,7 +331,10 @@
             
             const acX = (ac1 * sec1.area + ac2 * sec2.area) / totalArea;
             
-            return { area: totalArea, mac, acX };
+            // MAC Y Position (Area weighted approximation)
+            const macY = (sec1.macY * sec1.area + (y1 + sec2.macY) * sec2.area) / totalArea;
+            
+            return { area: totalArea, mac, acX, macY };
         }
 
         function calculateAll() {
@@ -385,9 +388,7 @@
             const wingLoading = wingArea_dm2 > 0 ? mass_g / wingArea_dm2 : 0;
 
             const mac = wingRes.mac;
-            // MAC Y position is not strictly needed for basic sizing but good for viz. 
-            // Simplified Y for display:
-            const macY = (wingRes.area > 0) ? (Y1 + Y2)/2 : 0; // Just a placeholder for display if needed, or remove
+            const macY = wingRes.macY;
 
             // Tail Volume Coefficients
             const x_ac_w = wingRes.acX;
@@ -449,7 +450,7 @@
             document.getElementById('resArea').innerText = wingArea_mm2.toLocaleString() + " mm²";
             document.getElementById('resLoading').innerText = wingLoading.toFixed(2) + " g/dm²";
             document.getElementById('resMAC').innerText = mac.toFixed(1) + " mm";
-            document.getElementById('resMACPos').innerText = "-"; // Multi-section MAC Y is complex to display simply
+            document.getElementById('resMACPos').innerText = macY.toFixed(1) + " mm";
             document.getElementById('resVH').innerText = VH_ratio.toFixed(3);
             document.getElementById('resVV').innerText = VV_ratio.toFixed(3);
 
@@ -470,10 +471,10 @@
             const stab = { A: AA, B: BB, C: CC, S1: SS1, S2: SS2, Y1: YY1, Y2: YY2, D };
             const vstab = { A: VA, B: VB, C: VC, S1: VS1, S2: VS2, Y1: VH1, Y2: VH2, D: VD };
             
-            drawAircraft(wing, stab, vstab);
+            drawAircraft(wing, stab, vstab, wingRes);
         }
 
-        function drawAircraft(w, s, v) {
+        function drawAircraft(w, s, v, wingRes) {
             // 캔버스 크기 조정 (DPI 대응)
             const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
@@ -593,6 +594,25 @@
             ctx.moveTo(-10, 0);
             ctx.lineTo(maxX * scale + 10, 0);
             ctx.stroke();
+
+            // Draw MAC (Main Wing)
+            if (wingRes && wingRes.area > 0) {
+                const mac = wingRes.mac;
+                const acX = wingRes.acX;
+                const macY = wingRes.macY;
+                const macLE = acX - 0.25 * mac;
+
+                ctx.strokeStyle = "green";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(macLE * scale, -macY * scale);
+                ctx.lineTo((macLE + mac) * scale, -macY * scale);
+                ctx.stroke();
+                
+                ctx.fillStyle = "green";
+                ctx.font = "12px Arial";
+                ctx.fillText("MAC", macLE * scale, -macY * scale - 5);
+            }
 
             ctx.restore();
 
