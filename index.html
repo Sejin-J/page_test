@@ -99,19 +99,16 @@
             gap: 8px;
             cursor: pointer;
             transition: background 0.2s;
+            user-select: none;
         }
         .model-chip:hover {
             background: #d0d0d0;
-        }
-        .model-chip span {
-            pointer-events: none;
         }
         .delete-btn {
             color: #e74c3c;
             font-weight: bold;
             cursor: pointer;
             padding: 0 4px;
-            pointer-events: auto;
         }
         .delete-btn:hover {
             color: #c0392b;
@@ -160,27 +157,37 @@
             <div class="input-group">
                 <h3>주익 (Main Wing) 형상</h3>
                 <label>Root Chord (A) [mm] <input type="number" id="wingRoot" value="400" step="1"></label>
-                <label>Tip Chord (B) [mm] <input type="number" id="wingTip" value="200" step="1"></label>
-                <label>Sweep Distance (S) [mm] <input type="number" id="wingSweep" value="100" step="1"></label>
-                <label>Half Span (Y) [mm] <input type="number" id="wingSpan" value="1000" step="1"></label>
+                <label>Panel 1 Tip Chord (B) [mm] <input type="number" id="wingMid" value="300" step="1"></label>
+                <label>Panel 2 Tip Chord (C) [mm] <input type="number" id="wingTip" value="200" step="1"></label>
+                <label>Panel 1 Sweep (S1) [mm] <input type="number" id="wingSweep1" value="50" step="1"></label>
+                <label>Panel 2 Sweep (S2) [mm] <input type="number" id="wingSweep2" value="50" step="1"></label>
+                <label>Panel 1 Span (Y1) [mm] <input type="number" id="wingSpan1" value="500" step="1"></label>
+                <label>Panel 2 Span (Y2) [mm] <input type="number" id="wingSpan2" value="500" step="1"></label>
             </div>
 
             <div class="input-group">
                 <h3>수평미익 (Stabilizer) 형상</h3>
                 <label>Root Chord (AA) [mm] <input type="number" id="stabRoot" value="250" step="1"></label>
-                <label>Tip Chord (BB) [mm] <input type="number" id="stabTip" value="150" step="1"></label>
-                <label>Sweep Distance (SS) [mm] <input type="number" id="stabSweep" value="50" step="1"></label>
-                <label>Half Span (YY) [mm] <input type="number" id="stabSpan" value="400" step="1"></label>
+                <label>Panel 1 Tip Chord (BB) [mm] <input type="number" id="stabMid" value="200" step="1"></label>
+                <label>Panel 2 Tip Chord (CC) [mm] <input type="number" id="stabTip" value="150" step="1"></label>
+                <label>Panel 1 Sweep (SS1) [mm] <input type="number" id="stabSweep1" value="25" step="1"></label>
+                <label>Panel 2 Sweep (SS2) [mm] <input type="number" id="stabSweep2" value="25" step="1"></label>
+                <label>Panel 1 Span (YY1) [mm] <input type="number" id="stabSpan1" value="200" step="1"></label>
+                <label>Panel 2 Span (YY2) [mm] <input type="number" id="stabSpan2" value="200" step="1"></label>
                 <label>LE 간 거리 (D) [mm] <input type="number" id="distLE" value="1200" step="1"></label>
             </div>
 
             <div class="input-group">
                 <h3>수직미익 (Vertical Tail) 형상</h3>
                 <label>Root Chord (VA) [mm] <input type="number" id="vStabRoot" value="200" step="1"></label>
-                <label>Tip Chord (VB) [mm] <input type="number" id="vStabTip" value="100" step="1"></label>
-                <label>Sweep Distance (VS) [mm] <input type="number" id="vStabSweep" value="80" step="1"></label>
-                <label>Height/Span (VH) [mm] <input type="number" id="vStabHeight" value="300" step="1"></label>
+                <label>Panel 1 Tip Chord (VB) [mm] <input type="number" id="vStabMid" value="150" step="1"></label>
+                <label>Panel 2 Tip Chord (VC) [mm] <input type="number" id="vStabTip" value="100" step="1"></label>
+                <label>Panel 1 Sweep (VS1) [mm] <input type="number" id="vStabSweep1" value="40" step="1"></label>
+                <label>Panel 2 Sweep (VS2) [mm] <input type="number" id="vStabSweep2" value="40" step="1"></label>
+                <label>Panel 1 Height (VH1) [mm] <input type="number" id="vStabHeight1" value="150" step="1"></label>
+                <label>Panel 2 Height (VH2) [mm] <input type="number" id="vStabHeight2" value="150" step="1"></label>
                 <label>LE 간 거리 (VD) [mm] <input type="number" id="vDistLE" value="1150" step="1"></label>
+                <label>수직미익 개수 <input type="number" id="vStabCount" value="1" step="1"></label>
             </div>
         </div>
 
@@ -256,7 +263,8 @@
             renderSavedModels();
         }
 
-        function deleteModel(index) {
+        function deleteModel(event, index) {
+            event.stopPropagation();
             if(!confirm("정말 삭제하시겠습니까?")) return;
             const savedModels = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
             savedModels.splice(index, 1);
@@ -284,12 +292,46 @@
             savedModels.forEach((model, index) => {
                 const chip = document.createElement('div');
                 chip.className = 'model-chip';
+                chip.onclick = () => loadModel(index);
                 chip.innerHTML = `
-                    <span onclick="loadModel(${index})">${model.name}</span>
-                    <span class="delete-btn" onclick="deleteModel(${index})">×</span>
+                    <span>${model.name}</span>
+                    <span class="delete-btn" onclick="deleteModel(event, ${index})">×</span>
                 `;
                 container.appendChild(chip);
             });
+        }
+
+        // Helper: Calculate Trapezoid Section Properties
+        function calcSection(root, tip, span, sweep) {
+            const area = (root + tip) * span / 2;
+            if (area <= 0) return { area: 0, mac: 0, macY: 0, macX: 0 };
+            
+            const mac = (2/3) * (root + tip - (root * tip) / (root + tip));
+            const macY = (span / 3) * ((root + 2 * tip) / (root + tip));
+            const macX = (sweep / span) * macY; // LE of MAC relative to section root LE
+            
+            return { area, mac, macY, macX };
+        }
+
+        // Helper: Combine two sections
+        function combineSections(root, mid, tip, s1, s2, y1, y2) {
+            const sec1 = calcSection(root, mid, y1, s1);
+            const sec2 = calcSection(mid, tip, y2, s2);
+            
+            const totalArea = sec1.area + sec2.area;
+            if (totalArea <= 0) return { area: 0, mac: 0, macY: 0, acX: 0 };
+
+            // MAC Length weighted by area
+            const mac = (sec1.mac * sec1.area + sec2.mac * sec2.area) / totalArea;
+
+            // Aerodynamic Center X (relative to Root LE)
+            // AC is at 0.25 * MAC from LE of MAC
+            const ac1 = sec1.macX + 0.25 * sec1.mac;
+            const ac2 = s1 + sec2.macX + 0.25 * sec2.mac; // Offset by S1
+            
+            const acX = (ac1 * sec1.area + ac2 * sec2.area) / totalArea;
+            
+            return { area: totalArea, mac, acX };
         }
 
         function calculateAll() {
@@ -300,87 +342,69 @@
             const clmax = getValue('clmax');
 
             // mm 단위 입력
+            // Wing
             const A = getValue('wingRoot');
-            const B = getValue('wingTip');
-            const S = getValue('wingSweep');
-            const Y = getValue('wingSpan');
+            const B = getValue('wingMid');
+            const C = getValue('wingTip');
+            const S1 = getValue('wingSweep1');
+            const S2 = getValue('wingSweep2');
+            const Y1 = getValue('wingSpan1');
+            const Y2 = getValue('wingSpan2');
 
+            // Stab
             const AA = getValue('stabRoot');
-            const BB = getValue('stabTip');
-            const SS = getValue('stabSweep');
-            const YY = getValue('stabSpan');
+            const BB = getValue('stabMid');
+            const CC = getValue('stabTip');
+            const SS1 = getValue('stabSweep1');
+            const SS2 = getValue('stabSweep2');
+            const YY1 = getValue('stabSpan1');
+            const YY2 = getValue('stabSpan2');
             const D = getValue('distLE');
 
+            // VStab
             const VA = getValue('vStabRoot');
-            const VB = getValue('vStabTip');
-            const VS = getValue('vStabSweep');
-            const VH = getValue('vStabHeight');
+            const VB = getValue('vStabMid');
+            const VC = getValue('vStabTip');
+            const VS1 = getValue('vStabSweep1');
+            const VS2 = getValue('vStabSweep2');
+            const VH1 = getValue('vStabHeight1');
+            const VH2 = getValue('vStabHeight2');
             const VD = getValue('vDistLE');
+            const vStabCount = getValue('vStabCount');
 
             // SI 단위 변환 (계산용)
             const mass_kg = mass_g / 1000;
-            const A_m = A / 1000;
-            const B_m = B / 1000;
-            const Y_m = Y / 1000;
-            const wingArea_m2 = (A_m + B_m) * Y_m; // Half span * (Root+Tip) is full area? No.
-            // Trapezoid Area = (a+b)/2 * h.
-            // Wing Area (Full) = 2 * ((A+B)/2 * Y) = (A+B)*Y. Correct.
 
             // 2. 기하학적 계산 (주익)
-            const wingArea_mm2 = (A + B) * Y;
+            const wingRes = combineSections(A, B, C, S1, S2, Y1, Y2);
+            const wingArea_mm2 = wingRes.area * 2; // Both sides
             const wingArea_dm2 = wingArea_mm2 / 10000;
+            const wingArea_m2 = wingArea_mm2 / 1000000;
             
             // 익면하중 = Mass(g) / Area(dm2)
             const wingLoading = wingArea_dm2 > 0 ? mass_g / wingArea_dm2 : 0;
 
-            // MAC (Mean Aerodynamic Chord)
-            // Formula: (2/3) * (A + B - (A*B)/(A+B))
-            let mac = 0;
-            if (A + B > 0) {
-                mac = (2/3) * (A + B - (A * B) / (A + B));
-            }
-
-            // MAC 위치 (Spanwise location from root, y_mac)
-            // y_mac = (Y/3) * ((A + 2B) / (A + B))
-            let macY = 0;
-            if (A + B > 0) {
-                macY = (Y / 3) * ((A + 2 * B) / (A + B));
-            }
+            const mac = wingRes.mac;
+            // MAC Y position is not strictly needed for basic sizing but good for viz. 
+            // Simplified Y for display:
+            const macY = (wingRes.area > 0) ? (Y1 + Y2)/2 : 0; // Just a placeholder for display if needed, or remove
 
             // Tail Volume Coefficients
-            // Need MAC of Wing (mac), Wing Area (wingArea_mm2), Wing Span (b = 2*Y)
-            // Need H-Tail Area, V-Tail Area
-            // Need Moment Arms (AC to AC)
-            
-            // Wing AC X position (relative to Wing Root LE)
-            // X_AC_w = X_LE_mac + 0.25 * mac
-            // X_LE_mac = (S / Y) * macY
-            const x_ac_w = (Y > 0) ? (S / Y) * macY + 0.25 * mac : 0;
+            const x_ac_w = wingRes.acX;
 
             // H-Tail Area & AC
-            const hTailArea_mm2 = (AA + BB) * YY;
-            let h_mac = 0, h_macY = 0;
-            if (AA + BB > 0) {
-                h_mac = (2/3) * (AA + BB - (AA * BB) / (AA + BB));
-                h_macY = (YY / 3) * ((AA + 2 * BB) / (AA + BB));
-            }
-            // H-Tail AC X position (relative to Wing Root LE)
-            // H-Tail Root LE is at D.
-            const x_ac_h = D + ((YY > 0) ? (SS / YY) * h_macY : 0) + 0.25 * h_mac;
+            const stabRes = combineSections(AA, BB, CC, SS1, SS2, YY1, YY2);
+            const hTailArea_mm2 = stabRes.area * 2;
+            const x_ac_h = D + stabRes.acX;
             const l_h = x_ac_h - x_ac_w;
 
             // V-Tail Area & AC
-            // V-Tail is single surface usually. Area = (VA+VB)/2 * VH * 1 (if single).
-            // Assuming standard single vertical tail.
-            const vTailArea_mm2 = (VA + VB) / 2 * VH; 
-            let v_mac = 0, v_macZ = 0; // v_macZ is height wise
-            if (VA + VB > 0) {
-                v_mac = (2/3) * (VA + VB - (VA * VB) / (VA + VB));
-                v_macZ = (VH / 3) * ((VA + 2 * VB) / (VA + VB));
-            }
-            // V-Tail AC X position
-            const x_ac_v = VD + ((VH > 0) ? (VS / VH) * v_macZ : 0) + 0.25 * v_mac;
+            const vStabRes = combineSections(VA, VB, VC, VS1, VS2, VH1, VH2);
+            const vTailArea_mm2 = vStabRes.area * vStabCount;
+            const x_ac_v = VD + vStabRes.acX;
             const l_v = x_ac_v - x_ac_w;
+
+            const wingSpanTotal = (Y1 + Y2) * 2;
 
             // Coefficients
             // V_H = (S_H * l_H) / (S_W * mac)
@@ -389,10 +413,10 @@
                 VH_ratio = (hTailArea_mm2 * l_h) / (wingArea_mm2 * mac);
             }
 
-            // V_V = (S_V * l_V) / (S_W * b)  where b = 2*Y
+            // V_V = (S_V * l_V) / (S_W * b)
             let VV_ratio = 0;
-            if (wingArea_mm2 > 0 && Y > 0) {
-                VV_ratio = (vTailArea_mm2 * l_v) / (wingArea_mm2 * (2 * Y));
+            if (wingArea_mm2 > 0 && wingSpanTotal > 0) {
+                VV_ratio = (vTailArea_mm2 * l_v) / (wingArea_mm2 * wingSpanTotal);
             }
 
             // 3. 속도 계산
@@ -425,7 +449,7 @@
             document.getElementById('resArea').innerText = wingArea_mm2.toLocaleString() + " mm²";
             document.getElementById('resLoading').innerText = wingLoading.toFixed(2) + " g/dm²";
             document.getElementById('resMAC').innerText = mac.toFixed(1) + " mm";
-            document.getElementById('resMACPos').innerText = macY.toFixed(1) + " mm";
+            document.getElementById('resMACPos').innerText = "-"; // Multi-section MAC Y is complex to display simply
             document.getElementById('resVH').innerText = VH_ratio.toFixed(3);
             document.getElementById('resVV').innerText = VV_ratio.toFixed(3);
 
@@ -442,10 +466,14 @@
             document.getElementById('resR60').innerText = formatTurn(info60);
 
             // 6. 형상 그리기
-            drawAircraft(A, B, S, Y, AA, BB, SS, YY, D, VA, VB, VS, VH, VD);
+            const wing = { A, B, C, S1, S2, Y1, Y2 };
+            const stab = { A: AA, B: BB, C: CC, S1: SS1, S2: SS2, Y1: YY1, Y2: YY2, D };
+            const vstab = { A: VA, B: VB, C: VC, S1: VS1, S2: VS2, Y1: VH1, Y2: VH2, D: VD };
+            
+            drawAircraft(wing, stab, vstab);
         }
 
-        function drawAircraft(A, B, S, Y, AA, BB, SS, YY, D, VA, VB, VS, VH, VD) {
+        function drawAircraft(w, s, v) {
             // 캔버스 크기 조정 (DPI 대응)
             const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
@@ -462,12 +490,12 @@
             const viewHeight = height / 2;
             
             // 좌표계 설정
-            // 전체 길이(X): Max(A, S+B, D+AA, D+SS+BB, VD+VA, VD+VS+VB)
-            const maxX = Math.max(A, S+B, D+AA, D+SS+BB, VD+VA, VD+VS+VB);
-            // Top View 폭(Y): Max(Y, YY) * 2
-            const maxY_Top = Math.max(Y, YY) * 2;
-            // Side View 높이(Z): Max(VH) (plus some wing thickness assumption?)
-            const maxZ_Side = Math.max(VH, 100); // Minimum height for visibility
+            // 전체 길이(X)
+            const maxX = Math.max(w.A, w.S1+w.S2+w.C, s.D+s.A, s.D+s.S1+s.S2+s.C, v.D+v.A, v.D+v.S1+v.S2+v.C);
+            // Top View 폭(Y)
+            const maxY_Top = Math.max(w.Y1+w.Y2, s.Y1+s.Y2) * 2;
+            // Side View 높이(Z)
+            const maxZ_Side = Math.max(v.Y1+v.Y2, 100); 
             
             // Scale calculation to fit both views
             const padding = 0.1;
@@ -510,13 +538,17 @@
             ctx.beginPath();
             // 오른쪽 날개
             ctx.moveTo(0 * scale, 0); // Root LE
-            ctx.lineTo(S * scale, -Y * scale); // Tip LE
-            ctx.lineTo((S + B) * scale, -Y * scale); // Tip TE
-            ctx.lineTo(A * scale, 0); // Root TE
+            ctx.lineTo(w.S1 * scale, -w.Y1 * scale); // Mid LE
+            ctx.lineTo((w.S1 + w.S2) * scale, -(w.Y1 + w.Y2) * scale); // Tip LE
+            ctx.lineTo((w.S1 + w.S2 + w.C) * scale, -(w.Y1 + w.Y2) * scale); // Tip TE
+            ctx.lineTo((w.S1 + w.B) * scale, -w.Y1 * scale); // Mid TE
+            ctx.lineTo(w.A * scale, 0); // Root TE
             // 왼쪽 날개 (대칭)
-            ctx.lineTo((S + B) * scale, Y * scale); // Tip TE
-            ctx.lineTo(S * scale, Y * scale); // Tip LE
-            ctx.lineTo(0 * scale, 0); // Root LE
+            ctx.lineTo((w.S1 + w.B) * scale, w.Y1 * scale); 
+            ctx.lineTo((w.S1 + w.S2 + w.C) * scale, (w.Y1 + w.Y2) * scale); 
+            ctx.lineTo((w.S1 + w.S2) * scale, (w.Y1 + w.Y2) * scale); 
+            ctx.lineTo(w.S1 * scale, w.Y1 * scale); 
+            ctx.lineTo(0 * scale, 0); 
             
             ctx.fill();
             ctx.stroke();
@@ -525,31 +557,28 @@
             ctx.fillStyle = "rgba(231, 76, 60, 0.3)";
             ctx.beginPath();
             // 오른쪽 미익
-            ctx.moveTo(D * scale, 0); // Root LE
-            ctx.lineTo((D + SS) * scale, -YY * scale); // Tip LE
-            ctx.lineTo((D + SS + BB) * scale, -YY * scale); // Tip TE
-            ctx.lineTo((D + AA) * scale, 0); // Root TE
+            ctx.moveTo(s.D * scale, 0); 
+            ctx.lineTo((s.D + s.S1) * scale, -s.Y1 * scale); 
+            ctx.lineTo((s.D + s.S1 + s.S2) * scale, -(s.Y1 + s.Y2) * scale); 
+            ctx.lineTo((s.D + s.S1 + s.S2 + s.C) * scale, -(s.Y1 + s.Y2) * scale); 
+            ctx.lineTo((s.D + s.S1 + s.B) * scale, -s.Y1 * scale); 
+            ctx.lineTo((s.D + s.A) * scale, 0); 
             // 왼쪽 미익
-            ctx.lineTo((D + SS + BB) * scale, YY * scale); // Tip TE
-            ctx.lineTo((D + SS) * scale, YY * scale); // Tip LE
-            ctx.lineTo(D * scale, 0); // Root LE
+            ctx.lineTo((s.D + s.S1 + s.B) * scale, s.Y1 * scale); 
+            ctx.lineTo((s.D + s.S1 + s.S2 + s.C) * scale, (s.Y1 + s.Y2) * scale); 
+            ctx.lineTo((s.D + s.S1 + s.S2) * scale, (s.Y1 + s.Y2) * scale); 
+            ctx.lineTo((s.D + s.S1) * scale, s.Y1 * scale); 
+            ctx.lineTo(s.D * scale, 0); 
 
             ctx.fill();
             ctx.stroke();
 
             // --- V-Tail (Top View - just a line or thin rect) ---
-            // Assuming V-Tail is on centerline
-            ctx.fillStyle = "rgba(46, 204, 113, 0.5)";
-            ctx.beginPath();
-            ctx.moveTo(VD * scale, -2);
-            ctx.lineTo((VD + VS) * scale, -2); // Tip LE projection? No, just root to tip projection
-            // Actually top view of V-tail is a line if vertical.
-            // Let's draw it as a thick line.
             ctx.lineWidth = 4;
             ctx.strokeStyle = "rgba(46, 204, 113, 0.8)";
             ctx.beginPath();
-            ctx.moveTo(VD * scale, 0);
-            ctx.lineTo((VD + VA) * scale, 0); // Root chord
+            ctx.moveTo(v.D * scale, 0);
+            ctx.lineTo((v.D + v.A) * scale, 0); // Root chord
             ctx.stroke();
             ctx.lineWidth = 2;
             ctx.strokeStyle = "#2c3e50";
@@ -590,15 +619,14 @@
             ctx.fillStyle = "rgba(52, 152, 219, 0.3)";
             ctx.strokeStyle = "#2c3e50";
             ctx.beginPath();
-            // Draw Root Chord profile
-            ctx.rect(0, -5, A * scale, 10); // Simplified thickness
+            ctx.rect(0, -5, w.A * scale, 10); // Simplified thickness
             ctx.fill();
             ctx.stroke();
 
             // H-Tail (Side Profile)
             ctx.fillStyle = "rgba(231, 76, 60, 0.3)";
             ctx.beginPath();
-            ctx.rect(D * scale, -3, AA * scale, 6);
+            ctx.rect(s.D * scale, -3, s.A * scale, 6);
             ctx.fill();
             ctx.stroke();
 
@@ -606,10 +634,12 @@
             // Trapezoid standing up
             ctx.fillStyle = "rgba(46, 204, 113, 0.3)";
             ctx.beginPath();
-            ctx.moveTo(VD * scale, 0); // Root LE
-            ctx.lineTo((VD + VS) * scale, -VH * scale); // Tip LE (Up is negative Y in canvas)
-            ctx.lineTo((VD + VS + VB) * scale, -VH * scale); // Tip TE
-            ctx.lineTo((VD + VA) * scale, 0); // Root TE
+            ctx.moveTo(v.D * scale, 0); // Root LE
+            ctx.lineTo((v.D + v.S1) * scale, -v.Y1 * scale); // Mid LE
+            ctx.lineTo((v.D + v.S1 + v.S2) * scale, -(v.Y1 + v.Y2) * scale); // Tip LE
+            ctx.lineTo((v.D + v.S1 + v.S2 + v.C) * scale, -(v.Y1 + v.Y2) * scale); // Tip TE
+            ctx.lineTo((v.D + v.S1 + v.B) * scale, -v.Y1 * scale); // Mid TE
+            ctx.lineTo((v.D + v.A) * scale, 0); // Root TE
             ctx.closePath();
             ctx.fill();
             ctx.stroke();
@@ -618,8 +648,8 @@
             ctx.strokeStyle = "#34495e";
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(-A*0.2 * scale, 0); // Nose
-            ctx.lineTo(Math.max(D+AA, VD+VA) * scale, 0); // Tail
+            ctx.moveTo(-w.A*0.2 * scale, 0); // Nose
+            ctx.lineTo(Math.max(s.D+s.A, v.D+v.A) * scale, 0); // Tail
             ctx.stroke();
 
             ctx.restore();
