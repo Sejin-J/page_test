@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 5: Multi-Agent</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>고정익 기체 초기 사이징 툴</h1>
+    <div class="nav-bar">
+        <a href="index.html" class="nav-btn">Home</a>
+        <a href="phase1.html" class="nav-btn">1. Initial Sizing</a>
+        <a href="phase2.html" class="nav-btn">2. Aero Coeffs</a>
+        <a href="phase3.html" class="nav-btn">3. Attitude Control</a>
+        <a href="phase4.html" class="nav-btn">4. Position Control</a>
+        <a href="phase5.html" class="nav-btn active">5. Multi-Agent</a>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <h2>5. Multi-Agent Coordination</h2>
+            <div class="action-bar">
+                <button class="save-btn" onclick="saveModel()">현재 설정 저장</button>
+            </div>
+            <div id="savedModelsContainer" class="saved-models"></div>
+
+            <div class="input-group">
+                <h3>Swarm Settings</h3>
+                <label>Number of Agents <input type="number" id="ma_count" value="3" step="1"></label>
+                <label>Separation Dist (m) <input type="number" id="ma_sep" value="50" step="5"></label>
+                <label>Formation Type <input type="text" id="ma_form" value="V-Shape" style="width:80px; text-align:right;"></label>
+            </div>
+        </div>
+        <div class="panel">
+            <h2>Swarm Status</h2>
+            <div class="note">Communication Topology Placeholder</div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

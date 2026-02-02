@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 4: Position Control</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>고정익 기체 초기 사이징 툴</h1>
+    <div class="nav-bar">
+        <a href="index.html" class="nav-btn">Home</a>
+        <a href="phase1.html" class="nav-btn">1. Initial Sizing</a>
+        <a href="phase2.html" class="nav-btn">2. Aero Coeffs</a>
+        <a href="phase3.html" class="nav-btn">3. Attitude Control</a>
+        <a href="phase4.html" class="nav-btn active">4. Position Control</a>
+        <a href="phase5.html" class="nav-btn">5. Multi-Agent</a>
+    </div>
+
+    <div class="container">
+        <div class="panel">
+            <h2>4. Position Control (Outer Loop)</h2>
+            <div class="action-bar">
+                <button class="save-btn" onclick="saveModel()">현재 설정 저장</button>
+            </div>
+            <div id="savedModelsContainer" class="saved-models"></div>
+
+            <div class="input-group">
+                <h3>Navigation Parameters</h3>
+                <label>Cruise Speed (m/s) <input type="number" id="pos_speed" value="15" step="1"></label>
+                <label>Turn Radius (m) <input type="number" id="pos_radius" value="30" step="5"></label>
+                <label>Waypoint Acceptance (m) <input type="number" id="pos_wp_dist" value="10" step="1"></label>
+            </div>
+        </div>
+        <div class="panel">
+            <h2>Path Planning</h2>
+            <div class="note">Map / Waypoint View Placeholder</div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
